@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>חקירת אירוע: MeridianTech Finance Breach</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: #111827;
+            --inner-card-bg: #172033;
+            --border-color: #1f2937;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent-cyan: #38bdf8;
+            --badge-info: #1e293b;
+            --badge-info-txt: #94a3b8;
+            --badge-low: #1e3a8a;
+            --badge-low-txt: #60a5fa;
+            --badge-medium: #78350f;
+            --badge-medium-txt: #fbbf24;
+            --badge-high: #7f1d1d;
+            --badge-high-txt: #f87171;
+            --baseline-bg: #0f172a;
+            --baseline-border: #1e293b;
+            --baseline-txt: #38bdf8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 25px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            color: var(--text-main);
+            font-weight: 700;
+        }
+
+        .header-desc {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-top: 8px;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            color: var(--text-main);
+            margin: 30px 0 15px 0;
+            font-weight: 700;
+        }
+
+        /* Norm Section Grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .asset-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .asset-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .asset-title {
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: var(--text-main);
+        }
+
+        .asset-ip {
+            font-family: 'Fira Code', monospace;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .asset-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .baseline-box {
+            background-color: var(--baseline-bg);
+            border: 1px solid var(--baseline-border);
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 0.8rem;
+            color: #cbd5e1;
+        }
+
+        .baseline-label {
+            color: var(--baseline-txt);
+            font-weight: 600;
+        }
+
+        /* Table Styles */
+        .table-container {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: right;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background-color: #1f2937;
+            color: var(--text-muted);
+            padding: 12px 16px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .alert-id {
+            font-family: 'Fira Code', monospace;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            font-size: 1rem;
+            text-align: center;
+        }
+
+        .alert-title {
+            font-weight: 600;
+            color: var(--text-main);
+            max-width: 280px;
+        }
+
+        .log-source {
+            color: var(--text-muted);
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+        }
+
+        .time-utc {
+            font-family: 'Fira Code', monospace;
+            font-weight: 600;
+            color: var(--text-main);
+            font-size: 0.95rem;
+        }
+
+        .severity {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .severity.informational {
+            background-color: var(--badge-info);
+            color: var(--badge-info-txt);
+            border: 1px solid #334155;
+        }
+
+        .severity.low {
+            background-color: var(--badge-low);
+            color: var(--badge-low-txt);
+            border: 1px solid #1e40af;
+        }
+
+        .severity.medium {
+            background-color: var(--badge-medium);
+            color: var(--badge-medium-txt);
+            border: 1px solid #92400e;
+        }
+
+        .severity.high {
+            background-color: var(--badge-high);
+            color: var(--badge-high-txt);
+            border: 1px solid #991b1b;
+        }
+
+        .raw-log {
+            font-family: 'Fira Code', monospace;
+            color: #94a3b8;
+            font-size: 0.8rem;
+            max-width: 500px;
+            word-break: break-word;
+            line-height: 1.4;
+            direction: ltr;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>נורמה ומידע רקע על הארגון — MeridianTech</h1>
+            <p class="header-desc">
+                MeridianTech היא חברת פינטק בגודל בינוני. לפני שניגשים ללוגים, חשוב להכיר את נכסי הליבה (Crown Jewels), חשבונות בעלי הרשאות גבוהות, וחשבונות שירות — ואת דפוס ההתנהגות התקין שלהם. כל חריגה מהבייסליין הזה היא אינדיקטור פוטנציאלי.
+            </p>
+        </header>
+
+        <!-- Crown Jewels -->
+        <h2 class="section-title">נכסי ליבה (Crown Jewels)</h2>
+        <div class="cards-grid">
+            <div class="asset-card">
+                <div>
+                    <div class="asset-header">
+                        <span class="asset-title">DC01</span>
+                        <span class="asset-ip">10.10.1.10</span>
+                    </div>
+                    <p class="asset-desc">בקר תחום ראשי (+ Active Directory + DNS פנימי). כשל בנכס הזה = שליטה מלאה בסביבה.</p>
+                </div>
+                <div class="baseline-box">
+                    <span class="baseline-label">בייסליין:</span> גישה אינטראקטיבית/RDP רק מ-WKS-DANA ו-WKS-ITADMIN, בשעות 06:00–15:00 UTC בלבד.
+                </div>
+            </div>
+
+            <div class="asset-card">
+                <div>
+                    <div class="asset-header">
+                        <span class="asset-title">FS01</span>
+                        <span class="asset-ip">10.10.1.20</span>
+                    </div>
+                    <p class="asset-desc">שרת קבצים ראשי — מכיל תיקיות HR, Finance ו-Legal.</p>
+                </div>
+                <div class="baseline-box">
+                    <span class="baseline-label">בייסליין:</span> משתמש בודד קורא בממוצע &lt;20 קבצים ביום, בהתאם להרשאות התיקייה שלו בלבד.
+                </div>
+            </div>
+
+            <div class="asset-card">
+                <div>
+                    <div class="asset-header">
+                        <span class="asset-title">DB01</span>
+                        <span class="asset-ip">10.10.1.30</span>
+                    </div>
+                    <p class="asset-desc">שרת SQL עם נתוני לקוחות ותשלומים רגישים (PCI-adjacent).</p>
+                </div>
+                <div class="baseline-box">
+                    <span class="baseline-label">בייסליין:</span> חיבורים אך ורק מ-APP01 (10.10.1.25) בפורט 1433. אין גישה ישירה מתחנות עבודה — נאכף ב-Firewall.
+                </div>
+            </div>
+
+            <div class="asset-card">
+                <div>
+                    <div class="asset-header">
+                        <span class="asset-title">BKP01</span>
+                        <span class="asset-ip">10.10.1.40</span>
+                    </div>
+                    <p class="asset-desc">שרת גיבויים — מריץ VSS וגיבוי לילי מלא לכל השרתים הקריטיים.</p>
+                </div>
+                <div class="baseline-box">
+                    <span class="baseline-label">בייסליין:</span> פעילות רק מהקונסולה המקומית (127.0.0.1) בשעה 02:00 UTC, תחת חשבון svc_backup בלבד.
+                </div>
+            </div>
+        </div>
+
+        <!-- Privileged Accounts -->
+        <h2 class="section-title">משתמשים בעלי הרשאות גבוהות וחשבונות שירות</h2>
+        <div class="cards-grid">
+            <div class="asset-card">
+                <div>
+                    <div class="asset-header">
+                        <span class="asset-title">admin_dana</span>
+                    </div>
+                    <p class="asset-desc">מנהלת IT, חברת קבוצת Domain Admins.</p>
+                </div>
+                <div class="baseline-box">
+                    <span class="baseline-label">בייסליין:</span> מתחברת אך ורק מתחנת WKS-DANA (10.10.2.15), Logon Type 10 (RDP), בשעות עבודה. מעולם לא נצפתה מתחברת מתחנת עובד רגיל.
+                </div>
+            </div>
+
+            <div class="asset-card">
+                <div>
+                    <div class="asset-header">
+                        <span class="asset-title">svc_backup</span>
+                    </div>
+                    <p class="asset-desc">חשבון שירות ייעודי לגיבויים אוטומטיים.</p>
+                </div>
+                <div class="baseline-box">
+                    <span class="baseline-label">בייסליין:</span> ריצה מקומית בלבד על BKP01. אין Interactive Logon. אין הרצת פקודות ידניות (כגון vssadmin) ממקור מרוחק.
+                </div>
+            </div>
+
+            <div class="asset-card">
+                <div>
+                    <div class="asset-header">
+                        <span class="asset-title">svc_sql</span>
+                    </div>
+                    <p class="asset-desc">חשבון שירות לחיבור אפליקציית ה-Backend למסד הנתונים.</p>
+                </div>
+                <div class="baseline-box">
+                    <span class="baseline-label">בייסליין:</span> מתחבר רק מ-APP01 ל-DB01 בפורט TCP/1433. אין RDP, אין גישה מכל מכונה אחרת.
+                </div>
+            </div>
+
+            <div class="asset-card">
+                <div>
+                    <div class="asset-header">
+                        <span class="asset-title">עובד קצה טיפוסי (כספים/HR)</span>
+                    </div>
+                    <p class="asset-desc">עמדות עבודה רגילות ברשת הפנימית (טווח 10.10.2.0/24).</p>
+                </div>
+                <div class="baseline-box">
+                    <span class="baseline-label">בייסליין:</span> ללא הרצת PowerShell מקודד, ללא שינוי רישום להשבתת הגנות, ללא יצירת Scheduled Tasks עצמאית, ללא תנועה ל-DB01.
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts Table -->
+        <h2 class="section-title">לוגים והתראות (סדר כרונולוגי לפי זמן UTC)</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 50px; text-align: center;">ID</th>
+                        <th>התראה</th>
+                        <th>מקור לוג</th>
+                        <th>זמן (UTC)</th>
+                        <th>חומרה</th>
+                        <th>פרטי לוג גולמי</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="alert-id">A</td>
+                        <td class="alert-title">סיום ריצה של משימת גיבוי מתתוזמנת על BKP01</td>
+                        <td class="log-source">Windows Event Log – BKP01</td>
+                        <td><span class="time-utc">02:00</span></td>
+                        <td><span class="severity informational">Informational</span></td>
+                        <td class="raw-log">Task: Nightly_Backup_Job | Account: svc_backup | Source: 127.0.0.1 (console) | Status: Completed | Duration: 47min</td>
+                    </tr>
+                    <tr>
+                        <td class="alert-id">B</td>
+                        <td class="alert-title">כניסה אינטראקטיבית (RDP) לחשבון admin_dana על DC01</td>
+                        <td class="log-source">Windows Security Log – DC01</td>
+                        <td><span class="time-utc">07:05</span></td>
+                        <td><span class="severity medium">Medium</span></td>
+                        <td class="raw-log">EventID 4624 | LogonType 10 | Account: MERIDIAN\admin_dana | Src IP: 10.10.2.15 | Workstation Name: WKS-DANA</td>
+                    </tr>
+                    <tr>
+                        <td class="alert-id">C</td>
+                        <td class="alert-title">חסימת ניסיונות חיבור מרובים ממקור חיצוני</td>
+                        <td class="log-source">Firewall – Perimeter</td>
+                        <td><span class="time-utc">08:00</span></td>
+                        <td><span class="severity low">Low</span></td>
+                        <td class="raw-log">Action: DENY x23 | Src: 185.221.x.x | Dst: 10.10.0.5 (WEB01) | Ports: 21-8080 sequential | Follow-up Activity (24h): none recorded</td>
+                    </tr>
+                    <tr>
+                        <td class="alert-id">D</td>
+                        <td class="alert-title">קליטת הודעת דוא"ל עם קובץ מצורף בסיומת .docm ליעד y.cohen</td>
+                        <td class="log-source">Email Security Gateway</td>
+                        <td><span class="time-utc">08:12</span></td>
+                        <td><span class="severity low">Low</span></td>
+                        <td class="raw-log">Sender: billing-support@invoice-verify-secure.com | Recipient: y.cohen@meridiantech.co.il | Attachment: Invoice_48213.docm | Verdict: Delivered</td>
+                    </tr>
+                    <tr>
+                        <td class="alert-id">E</td>
+                        <td class="alert-title">הרצת powershell.exe כתהליך-בן של WINWORD.EXE ב-WKS-YCOHEN</td>
+                        <td class="log-source">EDR – SentinelGuard</td>
+                        <td><span class="time-utc">08:47</span></td>
+                        <td><span class="severity medium">Medium</span></td>
+                        <td class="raw-log">Host: WKS-YCOHEN | Parent Process: WINWORD.EXE | Child Process: powershell.exe -nop -w hidden -enc | Detection Rule ID: EDR-0472</td>
+                    </tr>
+                    <tr>
+                        <td class="alert-id">F</td>
+                        <td class="alert-title">אתחול שרת APP01</td>
+                        <td class="log-source">Windows Event Log – APP01</td>
+                        <td><span class="time-utc">09:00</span></td>
+                        <td><span class="severity informational">Informational</span></td>
+                        <td class="raw-log">EventID 1074 | Reason Code: Scheduled patch cycle | Initiated By: WSUS-SVC</td>
+                    </tr>
+                    <tr>
+                        <td class="alert-id">G</td>
+                        <td class="alert-title">יצירת Scheduled Task חדשה ב-WKS-YCOHEN</td>
+                        <td class="log-source">Windows Security Log – WKS-YCOHEN</td>
+                        <td><span class="time-utc">09:15</span></td>
+                        <td><span class="severity low">Low</span></td>
+                        <td class="raw-log">EventID 4698 | Task Name: \Microsoft\Windows\WinUpdateCheck | Action: C:\Users\ycohen\AppData\Local\Temp\svchost.exe | Trigger: At logon</td>
+                    </tr>
+                    <tr>
+                        <td class="alert-id">H</td>
+                        <td class="alert-title">שינוי ערך רישום DisableAntiSpyware ב-WKS-YCOHEN</td>
+                        <td class="log-source">EDR – SentinelGuard</td>
+                        <td><span class="time-utc">09:40</span></td>
+                        <td><span class="severity high">High</span></td>
+                        <td class="raw-log">Host: WKS-YCOHEN | Registry Key: HKLM\...\Windows Defender\DisableAntiSpyware=1 | Actor Process: powershell.exe (PID 4820)</td>
+                    </tr>
+                    <tr>
+                        <td class="alert-id">I</td>
+                        <td class="alert-title">חיבור התקן USB לתחנת WKS-NLEVI</td>
+                        <td class="log-source">DLP Agent – WKS-NLEVI</td>
+                        <td><span class="time-utc">09:50</span></td>
+                        <td><span class="severity low">Low</span></td>
+                        <td class="raw-log">Host: WKS-NLEVI | User: n.levi | Event: Removable Storage Connected | Device: USB 3.0 Mass Storage | Policy: Removable-Media-Monitor</td>
+                    </tr>
+                    <tr>
+                        <td class="alert-id">J</td>
+                        <td class="alert-title">העתקת קובץ אל התקן USB בתחנת WKS-NLEVI</td>
+                        <td class="log-source">DLP Agent – WKS-NLEVI</td>
+                        <td><span class="time-utc">09:58</span></td>
+                        <td><span class="severity medium">Medium</span></td>
+                        <td class="raw-log">Host: WKS-NLEVI | File: expense_template.xlsx (37KB) | Destination: E:\ | Policy Action: Logged, Not Blocked</td>
+                    </tr>
+                    <tr>
+                        <td class="alert-id">K</td>
+                        <td class="alert-title">ריצת הפקודות whoami /all ו-net group ב-WKS-YCOHEN</td>
+                        <td class="log-source">EDR – SentinelGuard</td>
+                        <td><span class="time-utc">10:05</span></td>
+                        <td><span class="severity low">Low</span></td>
+                        <td class="raw-log">Host: WKS-YCOHEN | Process: cmd.exe | Command Line: whoami /all && net group "Domain Admins" /domain</td>
+                    </tr>
+                    <tr>
+                        <td class="alert-id">L</td>
+                        <td class="alert-title">גישת תהליך rundll32.exe לזיכרון lsass.exe ב-WKS-YCOHEN</td>
+                        <td class="log-source">EDR – SentinelGuard</td>
+                        <td><span class="time-utc">10:30</span></td>
+                        <td><span class="severity high">High</span></td>
+                        <td class="raw-log">Host: WKS-YCOHEN | Process: rundll32.exe accessing lsass.exe (PID 692) | Access Pattern: MiniDump | Detection Rule ID: EDR-0891</td>
+                    </tr>
+                    <tr>
+                        <td class="alert-id">M</td>
+                        <td class="alert-title">נעילת חשבון לאחר 5 ניסיונות כניסה כושלים (VPN)</td>
+                        <td class="log-source">VPN Concentrator</td>
+                        <td><span class="time-utc">10:50</span></td>
+                        <td><span class="severity low">Low</span></td>
+                        <td class="raw-log">Account: user_rgold | Result: ACCOUNT_LOCKED (5 failed attempts) | Src IP: 84.x.x.x | Resolution: self-service password reset</td>
+                    </tr>
+                    <tr>
+                        <td class="alert-id">N</td>
+                        <td class="alert-title">כניסה אינטראקטיבית (RDP) לחשבון admin_dana על DC01</td>
+                        <td class="log-source">Windows Security Log – DC01</td>
+                        <td><span class="time-utc">11:00</span></td>
+                        <td><span class="severity medium">Medium</span></td>
+                        <td class="raw-log">EventID 4624 | LogonType 10 | Account: MERIDIAN\admin_dana | Src IP: 10.10.2.45 | Workstation Name: WKS-YCOHEN</td>
+                    </tr>
+                    <tr>
+                        <td class="alert-id">O</td>
+                        <td class="alert-title">קריאת קבצים בנתיב FS01\Finance$\ תחת חשבון admin_dana</td>
+                        <td class="log-source">Windows Security Log – FS01</td>
+                        <td><span class="time-utc">11:20</span></td>
+                        <td><span class="severity medium">Medium</span></td>
+                        <td class="raw-log">EventID 4663 | Account: admin_dana | Object: \FS01\Finance$\* | Access: ReadData | Session Source: DC01 | Count: 412 files / 6 minutes</td>
+                    </tr>
+                    <tr>
+                        <td class="alert-id">P</td>
+                        <td class="alert-title">תעבורת שאילתות DNS בקצב גבוה מ-WKS-YCOHEN</td>
+                        <td class="log-source">Firewall – DNS Logging</td>
+                        <td><span class="time-utc">12:00</span></td>
+                        <td><span class="severity medium">Medium</span></td>
+                        <td class="raw-log">Src: 10.10.2.45 | Query: 8f2ac91e0b.update-cdn-relay.net (+339 similar) | Rate: 340 queries/min | Subdomain Entropy: high</td>
+                    </tr>
+                    <tr>
+                        <td class="alert-id">Q</td>
+                        <td class="alert-title">חסימת חיבור SMB בין WKS-YCOHEN ל-DB01</td>
+                        <td class="log-source">Firewall – Internal Segmentation</td>
+                        <td><span class="time-utc">12:20</span></td>
+                        <td><span class="severity low">Low</span></td>
+                        <td class="raw-log">Action: DENY | Src: 10.10.2.45 | Dst: 10.10.1.30 (DB01) | Port: 445/TCP | Rule ID: FW-SEG-114</td>
+                    </tr>
+                    <tr>
+                        <td class="alert-id">R</td>
+                        <td class="alert-title">העברת נתונים יוצאת בנפח 1.4GB מ-WKS-YCOHEN</td>
+                        <td class="log-source">Proxy – HTTPS Outbound</td>
+                        <td><span class="time-utc">12:45</span></td>
+                        <td><span class="severity high">High</span></td>
+                        <td class="raw-log">Src: 10.10.2.45 | Dst: filebin-share.net | Method: POST | Bytes Out: 1.4GB | Category: Uncategorized Cloud Storage | Action: Allowed</td>
+                    </tr>
+                    <tr>
+                        <td class="alert-id">S</td>
+                        <td class="alert-title">ריצת הפקודה vssadmin delete shadows בהקשר חשבון svc_backup</td>
+                        <td class="log-source">Windows Security Log – BKP01</td>
+                        <td><span class="time-utc">13:10</span></td>
+                        <td><span class="severity medium">Medium</span></td>
+                        <td class="raw-log">EventID 4688 | Account: svc_backup | Command Line: vssadmin.exe delete shadows /all /quiet | Src IP: 10.10.2.45 | Result: Access Denied</td>
+                    </tr>
+                    <tr>
+                        <td class="alert-id">T</td>
+                        <td class="alert-title">חיבור חשבון השירות svc_sql משרת APP01 אל DB01</td>
+                        <td class="log-source">Windows Event Log – DB01</td>
+                        <td><span class="time-utc">14:00</span></td>
+                        <td><span class="severity low">Low</span></td>
+                        <td class="raw-log">Account: svc_sql | Source: APP01 (10.10.1.25) | Port: 1433/TCP | Protocol: TDS</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</body>
+</html>
