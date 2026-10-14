@@ -1,0 +1,1605 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important}</style>
+<title>Alderline Triage Exercise</title>
+<meta name="description" content="SOC Tier 1 exercise: order and classify 20 alerts from a fictional payments company, then write the escalation report.">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+<style>
+/* Operations-room theme. Near-black with a blue lean, thin grid, cyan and magenta signal colours,
+   lemon green as the third time-zone colour. Light mode is an explicit toggle. */
+:root {
+  color-scheme: dark;
+  --paper: #050810;
+  --panel: #0a1020;
+  --well: #0f1730;
+  --ink: #e9eefb;
+  --ink-2: #a9b4d0;
+  --ink-3: #8190b0;
+  --rule: #18213a;
+  --rule-strong: #2a3a66;
+  --accent: #2be4ff;
+  --accent-hover: #7af0ff;
+  --accent-soft: #082a36;
+  --on-accent: #031017;
+  --magenta: #ff3ecb;
+  --grid: rgba(110, 150, 255, 0.07);
+  --wash-a: rgba(43, 228, 255, 0.16);
+  --wash-b: rgba(255, 62, 203, 0.14);
+  --tz-z: #2be4ff;
+  --tz-p3: #ff5fd7;
+  --tz-m5: #d4ff3f;
+  --sev-high: #ff6b81;
+  --sev-medium: #ffc857;
+  --sev-low: #a9b4d0;
+  --sev-info: #8190b0;
+  --ok: #3ddc97;  --ok-bg: #0a2a20;  --ok-ink: #baf5db;
+  --bad: #ff5c7a; --bad-bg: #33101c; --bad-ink: #ffc7d1;
+  --log: #c9d3ef;
+  --sans: "Space Grotesk", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", "Cascadia Mono", Consolas, "SF Mono", Menlo, "Liberation Mono", monospace;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --paper: #f2f5fc;
+  --panel: #ffffff;
+  --well: #e9eef9;
+  --ink: #0b1226;
+  --ink-2: #435070;
+  --ink-3: #63708e;
+  --rule: #d6ddef;
+  --rule-strong: #b3bfdc;
+  --accent: #00778f;
+  --accent-hover: #005c70;
+  --accent-soft: #dcf3f8;
+  --on-accent: #ffffff;
+  --magenta: #b0108a;
+  --grid: rgba(20, 45, 110, 0.07);
+  --wash-a: rgba(0, 150, 180, 0.16);
+  --wash-b: rgba(190, 20, 150, 0.12);
+  --tz-z: #006f86;
+  --tz-p3: #b0108a;
+  --tz-m5: #5a7000;
+  --sev-high: #c4203f;
+  --sev-medium: #9a6200;
+  --sev-low: #435070;
+  --sev-info: #63708e;
+  --ok: #0e8a5a;  --ok-bg: #dff5ea;  --ok-ink: #0a4d33;
+  --bad: #c4203f; --bad-bg: #fde4ea; --bad-ink: #7d1228;
+  --log: #1c2a4d;
+}
+* { box-sizing: border-box; }
+html { scroll-padding-top: 16px; scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 44px 44px;
+  color: var(--ink);
+  font: 16px/1.6 var(--sans);
+  -webkit-text-size-adjust: 100%;
+}
+a { color: var(--accent); }
+code, .mono { font-family: var(--mono); font-size: 0.86em; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- top bar ---------- */
+.topbar {
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule-strong);
+  padding: 10px max(24px, env(safe-area-inset-right, 0px)) 10px max(24px, env(safe-area-inset-left, 0px));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.brand { color: var(--ink); font-weight: 700; letter-spacing: 0.01em; display: flex; align-items: center; gap: 10px; }
+.brand::before { content: ""; width: 12px; height: 12px; border-radius: 2px; background: linear-gradient(135deg, var(--accent), var(--magenta)); }
+.brand span { font-weight: 400; color: var(--ink-2); }
+.topright { display: flex; align-items: center; gap: 18px; }
+.caseref { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.04em; }
+button.theme {
+  font: inherit; font-size: 13px; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 12px; border-radius: 4px; cursor: pointer;
+  border: 1px solid var(--rule-strong); background: var(--panel); color: var(--ink);
+  transition: border-color .15s, color .15s;
+}
+button.theme:hover { border-color: var(--accent); color: var(--accent); }
+button.theme svg { width: 15px; height: 15px; }
+
+/* ---------- layout ---------- */
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-block: 0 64px;
+  padding-left: max(24px, env(safe-area-inset-left, 0px));
+  padding-right: max(24px, env(safe-area-inset-right, 0px));
+  display: grid;
+  grid-template-columns: 224px minmax(0, 1fr);
+  gap: 48px;
+}
+.toc { position: sticky; top: 0; align-self: start; padding-top: 32px; font-size: 14px; max-height: 100vh; overflow-y: auto; }
+.prog { border: 1px solid var(--rule-strong); background: var(--panel); border-radius: 4px; padding: 12px 14px 14px; margin-bottom: 22px; }
+.prog-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 8px; }
+.prog-top b { font-family: var(--mono); font-size: 13px; letter-spacing: 0; color: var(--ink); text-transform: none; }
+.bar { height: 6px; border-radius: 2px; background: var(--well); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--magenta)); transition: width .5s cubic-bezier(.2, .8, .2, 1); }
+.toc-h { margin: 0 0 8px; font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
+.toc ol { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--rule-strong); }
+.toc li a {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 6px 4px 6px 14px;
+  margin-left: -1px;
+  border-left: 2px solid transparent;
+  color: var(--ink-2);
+  text-decoration: none;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.toc li a:hover { color: var(--ink); border-left-color: var(--rule-strong); }
+.toc li.cur a { color: var(--ink); border-left-color: var(--accent); background: linear-gradient(90deg, var(--accent-soft), transparent); }
+.st { flex: none; width: 16px; height: 16px; color: var(--ink-3); display: inline-flex; }
+.st svg { width: 16px; height: 16px; }
+li[data-state="open"] .st { color: var(--accent); }
+li[data-state="done"] .st { color: var(--ok); }
+main { min-width: 0; padding-top: 32px; }
+
+/* ---------- type ---------- */
+h1 { font-size: clamp(32px, 4.4vw, 46px); line-height: 1.05; margin: 0 0 16px; font-weight: 700; letter-spacing: -0.025em; text-wrap: balance; }
+h2 { font-size: 28px; line-height: 1.15; margin: 0 0 14px; font-weight: 700; letter-spacing: -0.015em; }
+h3 { font-size: 18px; line-height: 1.3; margin: 32px 0 10px; font-weight: 700; }
+section > h2 { border-left: 4px solid var(--accent); padding-left: 14px; }
+p, li { max-width: 74ch; }
+p { margin: 0 0 12px; }
+.lede { font-size: 18px; color: var(--ink-2); }
+.muted { color: var(--ink-2); }
+.small { font-size: 14px; }
+section.block { padding: 56px 0 8px; }
+.part-label { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--magenta); font-weight: 600; margin: 0 0 8px; }
+
+/* ---------- briefing panel ---------- */
+.briefing { background: var(--panel); border: 1px solid var(--rule-strong); border-radius: 4px; position: relative; overflow: hidden; }
+.briefing::before { content: ""; position: absolute; inset: 0; background: linear-gradient(115deg, var(--wash-a), var(--wash-b) 55%, transparent 90%); -webkit-mask-image: linear-gradient(180deg, #000 0, transparent 85%); mask-image: linear-gradient(180deg, #000 0, transparent 85%); pointer-events: none; }
+.bhead { position: relative; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; padding: 12px 24px; border-bottom: 1px solid var(--rule-strong); font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
+.bhead .tag { color: var(--on-accent); background: var(--accent); padding: 2px 8px; border-radius: 2px; font-weight: 700; }
+.bhead .grow { flex: 1; }
+.bbody { position: relative; padding: 28px 24px 24px; }
+.casefacts { display: grid; grid-template-columns: repeat(4, auto); justify-content: start; gap: 4px 0; margin: 24px 0 26px; border: 1px solid var(--rule-strong); border-radius: 4px; background: var(--paper); font-size: 14px; }
+.casefacts div { display: flex; flex-direction: column; padding: 10px 22px; border-right: 1px solid var(--rule); }
+.casefacts div:last-child { border-right: 0; }
+.casefacts dt { color: var(--ink-3); font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; }
+.casefacts dd { margin: 0; font-weight: 600; font-family: var(--mono); font-size: 14px; }
+.steps { padding-left: 22px; margin: 0 0 12px; }
+.steps li { margin-bottom: 6px; padding-left: 4px; }
+.steps li::marker { color: var(--accent); font-family: var(--mono); font-weight: 600; }
+
+/* ---------- tables ---------- */
+.tablewrap { overflow-x: auto; margin: 12px 0 16px; border: 1px solid var(--rule-strong); border-radius: 4px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; vertical-align: top; padding: 11px 14px; border-bottom: 1px solid var(--rule); }
+th { font-weight: 600; background: var(--well); color: var(--ink-2); white-space: nowrap; font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; }
+tbody tr:last-child td { border-bottom: 0; }
+td.host { font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+.log { font-family: var(--mono); font-size: 12.5px; line-height: 1.55; color: var(--log); word-break: break-word; }
+.normal { color: var(--ink-2); }
+.normal b { color: var(--ink); font-weight: 600; }
+
+.note { border-left: 4px solid var(--magenta); background: var(--panel); border-top: 1px solid var(--rule); border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); border-radius: 0 4px 4px 0; padding: 14px 18px; margin: 22px 0; max-width: 78ch; }
+.note p:last-child { margin-bottom: 0; }
+
+/* ---------- time zones ---------- */
+.tz { display: inline-block; font-family: var(--mono); font-size: 13.5px; font-weight: 600; padding: 2px 9px; border-radius: 3px; border: 1px solid currentColor; background: color-mix(in srgb, currentColor 10%, transparent); white-space: nowrap; }
+.tz small { font-weight: 400; font-size: 11.5px; margin-left: 6px; }
+.tz.z  { color: var(--tz-z); }
+.tz.p3 { color: var(--tz-p3); }
+.tz.m5 { color: var(--tz-m5); }
+.utc { display: none; margin-top: 6px; font-family: var(--mono); font-size: 12.5px; color: var(--ink); white-space: nowrap; }
+.show-utc .utc { display: block; }
+
+.sev { font-weight: 600; font-size: 12.5px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.sev::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.sev.high { color: var(--sev-high); }
+.sev.medium { color: var(--sev-medium); }
+.sev.low { color: var(--sev-low); }
+.sev.info { color: var(--sev-info); }
+
+/* ---------- alert cards (tasks 1 and 2) ---------- */
+.cards { display: grid; gap: 10px; margin: 14px 0 18px; }
+.acard, .ccard {
+  background: var(--panel);
+  border: 1px solid var(--rule-strong);
+  border-radius: 4px;
+  transition: border-color .2s, background .2s, box-shadow .2s;
+}
+.acard:hover, .ccard:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--rule-strong)); }
+.acard { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 0 20px; padding: 14px 18px 14px 14px; align-items: start; }
+.acard[draggable="true"] { cursor: grab; }
+.acard.dragging { opacity: 0.4; border-style: dashed; }
+.handle { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.idline { display: flex; align-items: center; gap: 8px; }
+.idline .grip { color: var(--ink-3); }
+.tid { font-family: var(--mono); font-weight: 700; font-size: 22px; line-height: 1; color: var(--ink); }
+.tid small { display: block; font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); font-weight: 500; margin-bottom: 4px; }
+.mv { display: inline-flex; gap: 4px; }
+.mv button { border: 1px solid var(--rule-strong); background: var(--paper); width: 30px; height: 24px; padding: 0; cursor: pointer; color: var(--ink-2); border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; transition: color .15s, border-color .15s, background .15s; }
+.mv button:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.mv svg { width: 11px; height: 11px; }
+.alert-title { font-weight: 700; font-size: 16px; line-height: 1.35; }
+.alert-source { color: var(--ink-2); font-size: 13.5px; margin-bottom: 8px; }
+.acard .log, .ccard .log { background: var(--paper); border: 1px solid var(--rule); border-radius: 3px; padding: 8px 10px; margin-top: 8px; }
+.alert-source + .log { margin-top: 0; }
+.acard .meta { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; text-align: right; min-width: 120px; }
+.mark { font-size: 12.5px; font-weight: 600; min-height: 1em; }
+.row-ok { border-color: var(--ok) !important; box-shadow: inset 4px 0 0 var(--ok); animation: pulse-ok .6s ease-out; }
+.row-bad { border-color: var(--bad) !important; background: var(--bad-bg); box-shadow: inset 4px 0 0 var(--bad); animation: pulse-bad .6s ease-out; }
+.row-ok .mark { color: var(--ok); }
+.row-bad .mark { color: var(--bad); }
+@keyframes pulse-ok { from { background: var(--ok-bg); } to { background: var(--panel); } }
+@keyframes pulse-bad { from { transform: translateX(-4px); } 40% { transform: translateX(3px); } to { transform: none; } }
+
+.ccard { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px 20px; padding: 16px 18px; }
+.chead { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; grid-row: 1 / span 2; }
+.ctime { font-family: var(--mono); font-size: 13px; color: var(--ink-2); }
+.cbody .alert-title { margin-bottom: 0; }
+.cform { grid-column: 2; display: grid; gap: 10px; }
+.seg { display: flex; flex-wrap: wrap; gap: 8px; }
+.segbtn { font: inherit; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 4px; cursor: pointer; background: var(--paper); color: var(--ink-2); border: 1px solid var(--rule-strong); transition: color .15s, border-color .15s, background .15s; }
+.segbtn svg { width: 16px; height: 16px; flex: none; }
+.segbtn:hover { color: var(--ink); border-color: var(--accent); }
+.segbtn[aria-checked="true"] { background: var(--accent-soft); color: var(--ink); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 700; }
+.segbtn[aria-checked="true"] svg { color: var(--accent); }
+.catkey { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; font-weight: 600; }
+.catkey svg { width: 16px; height: 16px; color: var(--ink-3); }
+
+.acard .sev { font-size: 14px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 12px; border-radius: 3px; border: 1px solid currentColor; background: color-mix(in srgb, currentColor 14%, transparent); gap: 8px; }
+.acard .sev::before { width: 10px; height: 10px; }
+.acard .sev.high { box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 35%, transparent); }
+
+/* ---------- buttons ---------- */
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; align-items: center; }
+button.btn { font: inherit; font-size: 15px; font-weight: 700; padding: 9px 18px; border-radius: 4px; border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent); cursor: pointer; transition: background .15s, border-color .15s, transform .1s; }
+button.btn:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+button.btn:active { transform: translateY(1px); }
+button.btn.secondary { background: transparent; color: var(--accent); }
+button.btn.secondary:hover { background: var(--accent-soft); }
+button.btn.quiet { background: none; border-color: transparent; color: var(--ink-2); font-weight: 400; padding-left: 4px; padding-right: 4px; text-decoration: underline; }
+button.btn.quiet:hover { color: var(--ink); }
+.result { display: none; padding: 12px 16px; border-radius: 4px; margin: 8px 0 16px; max-width: 82ch; border: 1px solid transparent; }
+.result.ok { display: block; background: var(--ok-bg); color: var(--ok-ink); border-color: var(--ok); animation: rise .35s ease-out; }
+.result.bad { display: block; background: var(--bad-bg); color: var(--bad-ink); border-color: var(--bad); animation: rise .35s ease-out; }
+.result ul { margin: 8px 0 0; padding-left: 20px; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ---------- form controls ---------- */
+select, input[type="text"], input[type="date"], textarea { font: inherit; font-size: 15px; color: var(--ink); background: var(--paper); border: 1px solid var(--rule-strong); border-radius: 4px; padding: 7px 10px; width: 100%; transition: border-color .15s; }
+select:hover, input:hover, textarea:hover { border-color: color-mix(in srgb, var(--accent) 60%, var(--rule-strong)); }
+textarea { resize: vertical; min-height: 40px; line-height: 1.5; overflow: hidden; }
+select { padding-right: 4px; }
+
+details.answers { margin: 10px 0 16px; }
+details.answers > summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 10px; color: var(--accent); font-weight: 700; padding: 8px 14px; border: 1px solid var(--rule-strong); border-radius: 4px; background: var(--panel); }
+details.answers > summary::-webkit-details-marker { display: none; }
+details.answers > summary::before { content: "+"; font-family: var(--mono); width: 14px; text-align: center; }
+details.answers[open] > summary::before { content: "\2212"; }
+details.answers > summary:hover { border-color: var(--accent); }
+details.answers[open] > summary { margin-bottom: 12px; }
+
+/* ---------- report form ---------- */
+.sheet { border: 1px solid var(--rule-strong); border-radius: 4px; padding: 40px 48px 32px; margin: 20px 0; background: var(--panel); }
+.sheet-head { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; margin: 0 0 8px; }
+.sheet-head .wide { grid-column: 1 / -1; }
+.sheet label, .fieldlabel { display: block; font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 5px; }
+.sheet > h3 { margin-top: 40px; border-left: 3px solid var(--magenta); padding-left: 12px; }
+.sheet .hint { font-size: 14px; color: var(--ink-3); margin: -4px 0 10px; }
+.sheet textarea { border: 0; border-bottom: 1px solid var(--rule-strong); border-radius: 0; background: var(--well); padding: 10px 12px; }
+.sheet textarea:focus { background: var(--paper); outline: 2px solid var(--accent); outline-offset: 0; }
+.sheet .tablewrap table td { padding: 8px; }
+.sheet .tablewrap textarea, .sheet .tablewrap input, .sheet .tablewrap select { background: var(--paper); border: 1px solid var(--rule-strong); }
+.sheet .rowtools { display: flex; gap: 10px; flex-wrap: wrap; }
+.alert-pick select { font-size: 14px; }
+.alert-pick .pick-title { display: block; font-size: 12.5px; color: var(--ink-2); margin-top: 4px; line-height: 1.35; }
+button.remove { border: 0; background: none; color: var(--ink-3); cursor: pointer; font: inherit; font-size: 13.5px; text-decoration: underline; padding: 6px 2px; }
+button.remove:hover { color: var(--bad); }
+.status { font-size: 14px; color: var(--ink-2); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; background: var(--accent-soft); color: var(--ink); border: 1px solid var(--accent); border-radius: 3px; padding: 2px 4px 2px 8px; font-size: 13px; animation: rise .25s ease-out; }
+.chip button { border: 0; background: none; color: var(--ink-2); cursor: pointer; font: inherit; line-height: 1; padding: 2px 4px; }
+.chip button:hover { color: var(--bad); }
+
+/* ---------- locked task panel ---------- */
+.lock-note { display: flex; gap: 16px; align-items: flex-start; border: 1px dashed var(--rule-strong); border-radius: 4px; padding: 18px 20px; margin: 14px 0 8px; max-width: 80ch; background: var(--panel); color: var(--ink-2); }
+.lock-ico { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid var(--magenta); border-radius: 4px; color: var(--magenta); }
+.lock-note p { margin: 0; }
+.lock-note strong { color: var(--ink); }
+.lock-tag { display: inline-block; font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--magenta); margin-bottom: 4px; font-weight: 600; }
+.lockbody[hidden] { display: none; }
+section.just-unlocked { animation: unlock 1.1s ease-out; }
+section.just-unlocked > .lockbody { animation: rise .5s ease-out; }
+@keyframes unlock { 0% { box-shadow: inset 0 2px 0 var(--accent), 0 -30px 40px -30px var(--accent); } 100% { box-shadow: inset 0 2px 0 transparent, 0 -30px 40px -30px transparent; } }
+
+/* ---------- rendered report (model + print) ---------- */
+.rdoc { font-size: 15px; line-height: 1.55; color: var(--ink); }
+.rdoc h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.01em; line-height: 1.2; }
+.rdoc .rsub { color: var(--ink-2); margin: 0 0 20px; }
+.rdoc h2 { font-size: 17px; margin: 28px 0 8px; padding: 0 0 4px; border: 0; border-bottom: 1px solid var(--rule-strong); letter-spacing: 0; }
+.rdoc table { font-size: 13.5px; margin: 6px 0 4px; table-layout: fixed; width: 100%; }
+.rdoc th, .rdoc td { padding: 6px 8px; border: 1px solid var(--rule-strong); white-space: normal; overflow-wrap: anywhere; text-transform: none; letter-spacing: 0; }
+.rdoc th { background: var(--well); font-size: 13px; color: var(--ink); }
+.rdoc .meta { width: 70%; }
+.rdoc .meta th { width: 170px; }
+.rdoc ul { margin: 4px 0 10px; padding-left: 20px; }
+.rdoc li { margin-bottom: 3px; max-width: none; }
+.rdoc p { max-width: none; }
+.rdoc .t-time { font-family: var(--mono); font-size: 12.5px; }
+.rdoc .a-id { font-family: var(--mono); white-space: nowrap; }
+.rdoc .a-title { display: block; color: var(--ink-2); font-size: 12.5px; }
+.model { border: 1px solid var(--rule-strong); border-radius: 4px; padding: 32px 40px; margin-top: 8px; background: var(--panel); }
+
+footer.pagefoot { grid-column: 1 / -1; border-top: 1px solid var(--rule-strong); margin-top: 56px; padding-top: 20px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 14px; color: var(--ink-2); }
+
+#print-report { display: none; }
+#reportPreview { margin: 8px 0 24px; }
+#reportPreview[hidden] { display: none; }
+.confirm-armed { border-color: var(--bad) !important; color: var(--bad) !important; }
+
+@media (max-width: 1080px) {
+  .page { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .toc { position: static; padding-top: 20px; max-height: none; }
+  .toc ol { display: flex; flex-wrap: wrap; gap: 2px 14px; border-left: 0; }
+  .toc li a { padding: 4px 0; border-left: 0; margin: 0; gap: 8px; }
+  .toc li.cur a { background: none; }
+}
+@media (max-width: 720px) {
+  .acard { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .acard .meta { flex-direction: row; flex-wrap: wrap; align-items: center; text-align: left; min-width: 0; gap: 8px 14px; }
+  .handle { flex-direction: row; align-items: center; justify-content: space-between; width: 100%; }
+  .tid small { display: inline; margin: 0 6px 0 0; }
+  .ccard { grid-template-columns: minmax(0, 1fr); }
+  .chead { grid-row: auto; flex-direction: row; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; }
+  .cform { grid-column: 1; }
+}
+@media (max-width: 640px) {
+  .topbar { padding: 10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); }
+  .page { padding-block: 0 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .bhead, .bbody { padding-left: 16px; padding-right: 16px; }
+  .casefacts { grid-template-columns: repeat(2, 1fr); }
+  .casefacts div { border-bottom: 1px solid var(--rule); }
+  .sheet { padding: 24px 16px; }
+  .sheet-head { grid-template-columns: 1fr; }
+  .model { padding: 20px 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 16mm 15mm 18mm;
+    @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8.5pt "Segoe UI", Arial, sans-serif; color: #666; }
+    @bottom-left { content: "ALDERLINE-2026-0310 incident report"; font: 8.5pt "Segoe UI", Arial, sans-serif; color: #666; }
+  }
+  :root, :root[data-theme] {
+    color-scheme: light;
+    --ink: #111c27; --ink-2: #4f5b67; --ink-3: #6f7a85;
+    --rule: #cfd5db; --rule-strong: #b9c1c9; --paper: #ffffff; --panel: #ffffff; --well: #f1f4f6;
+  }
+  body { font-size: 10.5pt; background: #fff; background-image: none; color: #111c27; font-family: "Segoe UI", Arial, sans-serif; }
+  .topbar, .page { display: none !important; }
+  #print-report { display: block !important; }
+  .rdoc { font-size: 10.5pt; }
+  .rdoc h1 { font-size: 18pt; }
+  .rdoc h2 { font-size: 12.5pt; break-after: avoid; }
+  .rdoc table { font-size: 9.5pt; }
+  .rdoc tr { break-inside: avoid; }
+  .rdoc th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #print-report { background: #fff; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">Alderline Payments <span>Security Operations Center</span></div>
+  <div class="topright">
+    <span class="caseref">CASE ALDERLINE-2026-0310</span>
+    <button class="theme" type="button" id="themeBtn" aria-label="Switch colour theme"></button>
+  </div>
+</header>
+
+<div class="page">
+  <nav class="toc" aria-label="Contents">
+    <div class="prog" aria-label="Progress">
+      <div class="prog-top"><span>Progress</span><b id="progLabel">0 of 3</b></div>
+      <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0" id="progTrack"><i id="progBar"></i></div>
+    </div>
+    <p class="toc-h">Contents</p>
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#environment">Environment</a></li>
+      <li><a href="#timezones">Log time zones</a></li>
+      <li data-st="task1"><a href="#task1"><span>Task 1: Order</span><span class="st"></span></a></li>
+      <li data-st="task2"><a href="#task2"><span>Task 2: Classify</span><span class="st"></span></a></li>
+      <li data-st="report"><a href="#report"><span>Task 3: Report</span><span class="st"></span></a></li>
+      <li data-st="model"><a href="#model"><span>Model answer</span><span class="st"></span></a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <!-- ======================= OVERVIEW ======================= -->
+    <section id="overview" class="briefing">
+      <div class="bhead"><span class="tag">Shift briefing</span><span>Case ALDERLINE-2026-0310</span><span class="grow"></span><span>Queue: 20 alerts</span></div>
+      <div class="bbody">
+        <h1>Incident triage exercise</h1>
+        <p class="lede">On 10 March 2026, twenty alerts reached the Alderline Payments SOC queue from different log sources. You are the Tier 1 analyst on shift. Put the alerts in order, work out which of them belong to an attack, and write the escalation report for Tier 2.</p>
+
+        <dl class="casefacts">
+          <div><dt>Case</dt><dd>ALDERLINE-2026-0310</dd></div>
+          <div><dt>Date of activity</dt><dd>10 March 2026</dd></div>
+          <div><dt>Alerts</dt><dd>20</dd></div>
+          <div><dt>Role</dt><dd>SOC analyst, Tier 1</dd></div>
+        </dl>
+
+        <ol class="steps">
+          <li>Read the environment notes. They describe normal behaviour for the key servers and accounts, and every finding is measured against them.</li>
+          <li>Task 1: convert each alert time to UTC and put the alerts in chronological order.</li>
+          <li>Task 2: decide whether each alert is part of the attack, routine noise, or an unrelated incident.</li>
+          <li>Task 3: write the escalation report and export it as a PDF.</li>
+        </ol>
+        <p class="muted small">Each task unlocks when the one before it is complete. Your answers are saved in this browser, so you can close the page and continue later.</p>
+      </div>
+    </section>
+
+    <!-- ======================= ENVIRONMENT ======================= -->
+    <section id="environment" class="block">
+      <h2>Environment</h2>
+      <p>Alderline Payments is a mid-sized payments company. The servers and accounts below matter most in this case. The description of normal behaviour is the baseline: activity that does not match it is worth a closer look.</p>
+
+      <h3>Critical servers</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Server</th><th>IP address</th><th>Role</th><th>Normal behaviour</th></tr></thead>
+          <tbody>
+            <tr><td class="host">DC01</td><td class="host">10.10.1.10</td><td>Primary domain controller (Active Directory and internal DNS). Control of this server means control of the domain.</td><td class="normal">Interactive and RDP access only from <b>WKS-DANA</b>, between 06:00 and 15:00 UTC.</td></tr>
+            <tr><td class="host">FS01</td><td class="host">10.10.1.20</td><td>Main file server with the Finance, HR and Legal shares.</td><td class="normal">A user reads <b>fewer than 20 files a day</b> on average, only in folders they have permission to.</td></tr>
+            <tr><td class="host">DB01</td><td class="host">10.10.1.30</td><td>SQL server with customer and payment data (PCI scope).</td><td class="normal">Connections only from <b>APP01 (10.10.1.25) on TCP 1433</b>. Workstations cannot reach it directly; the firewall enforces this.</td></tr>
+            <tr><td class="host">BKP01</td><td class="host">10.10.1.40</td><td>Backup server. Runs VSS snapshots and a full nightly backup of all critical servers.</td><td class="normal">Activity only from the local console (127.0.0.1) at <b>02:00 UTC</b>, under svc_backup.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Privileged and service accounts</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Account</th><th>Description</th><th>Normal behaviour</th></tr></thead>
+          <tbody>
+            <tr><td class="host">admin_dana</td><td>IT manager, member of Domain Admins.</td><td class="normal">Signs in only from <b>WKS-DANA (10.10.2.15)</b> over RDP (logon type 10), during working hours. Has never signed in from a regular employee workstation.</td></tr>
+            <tr><td class="host">svc_backup</td><td>Service account for automated backups.</td><td class="normal">Runs <b>locally on BKP01 only</b>. No interactive logons, and no manual commands (such as vssadmin) from a remote source.</td></tr>
+            <tr><td class="host">svc_sql</td><td>Service account the back-end application uses to reach the database.</td><td class="normal">Connects only <b>from APP01 to DB01 on TCP 1433</b>. No RDP, and no access from any other host.</td></tr>
+            <tr><td>Employee workstations</td><td>Finance and HR workstations on 10.10.2.0/24.</td><td class="normal">No encoded PowerShell, no registry changes that turn off protection, no scheduled tasks created by the user, and no traffic to DB01.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        <p>Not every alert in the queue belongs to the incident. Routine activity lands in the same queue, and so can security events that have nothing to do with the attack. Keeping them apart is part of the job.</p>
+      </div>
+    </section>
+
+    <!-- ======================= TIME ZONES ======================= -->
+    <section id="timezones" class="block">
+      <h2>Log time zones</h2>
+      <p>The log sources do not share a time zone. Alert times in Task 1 are shown exactly as each source recorded them, colour-coded by time zone. Convert them to UTC before you put them in order.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Time zone</th><th>Log sources</th><th>Conversion to UTC</th></tr></thead>
+          <tbody>
+            <tr><td><span class="tz p3">UTC+3</span></td><td>Windows event logs (all servers and workstations), web proxy, DLP agent</td><td>Subtract 3 hours</td></tr>
+            <tr><td><span class="tz z">UTC</span></td><td>Firewall, email security gateway, VPN concentrator</td><td>No change</td></tr>
+            <tr><td><span class="tz m5">UTC−5</span></td><td>EDR (cloud console)</td><td>Add 5 hours</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ======================= TASK 1 ======================= -->
+    <section id="task1" class="block">
+      <p class="part-label">Part 1 / Analysis</p>
+      <h2>Task 1: Order the alerts</h2>
+      <p>The alerts are listed in the order they reached the SIEM, not the order they happened. Drag the cards, or use the arrows, to put them in chronological order by UTC, earliest first. The ticket number stays with the alert and says nothing about when it happened.</p>
+
+      <div class="cards" id="orderBody"></div>
+
+      <div class="actions">
+        <button class="btn" type="button" id="checkOrderBtn">Check order</button>
+        <button class="btn secondary" type="button" id="resetOrderBtn">Reset order</button>
+        <button class="btn quiet" type="button" id="solveOrderBtn">Show the correct order</button>
+      </div>
+      <div class="result" id="orderResult" role="status"></div>
+    </section>
+
+    <!-- ======================= TASK 2 ======================= -->
+    <section id="task2" class="block">
+      <h2>Task 2: Classify the alerts</h2>
+      <p>The alerts are listed in the chronological order you set in Task 1, so you can read the sequence of events as you classify. For each alert, choose one category and write a short reason. Base the reason on the log and the baseline, not on the alert title.</p>
+      <ul class="small muted">
+        <li><b>Part of the attack:</b> a step in the intrusion you are escalating.</li>
+        <li><b>Routine noise:</b> matches the baseline or is normal background activity.</li>
+        <li><b>Unrelated incident:</b> a security event worth its own review, but not part of this attack.</li>
+      </ul>
+
+      <div class="cards" id="classifyBody"></div>
+
+      <div class="actions">
+        <button class="btn" type="button" id="checkClassBtn">Check classification</button>
+      </div>
+      <div class="result" id="classResult" role="status"></div>
+
+      <details class="answers">
+        <summary>Show the answer key for Task 2</summary>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Ticket</th><th>Alert</th><th>Category</th><th>Reason</th></tr></thead>
+            <tbody id="classKeyBody"></tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+
+    <!-- ======================= TASK 3: REPORT ======================= -->
+    <section id="report" class="block">
+      <p class="part-label">Part 2 / Escalation</p>
+      <h2>Task 3: Escalation report</h2>
+      <p>Write the report you would hand to Tier 2. Write it for a reader who has not seen the alerts: state what happened, what you are sure of, and what is still open. The guidance under each heading stays on this page; the exported PDF contains only your report.</p>
+
+      <div class="sheet" id="reportForm">
+        <div class="sheet-head">
+          <div class="wide">
+            <label for="f-title">Incident title</label>
+            <input type="text" id="f-title" data-field="title" placeholder="For example: Phishing leading to data theft from the Finance share">
+          </div>
+          <div>
+            <label for="f-analyst">Prepared by</label>
+            <input type="text" id="f-analyst" data-field="analyst" placeholder="Your name">
+          </div>
+          <div>
+            <label for="f-date">Report date</label>
+            <input type="date" id="f-date" data-field="date">
+          </div>
+          <div>
+            <label for="f-sev">Severity</label>
+            <select id="f-sev" data-field="sev">
+              <option value="">Select severity</option>
+              <option>Critical</option>
+              <option>High</option>
+              <option>Medium</option>
+              <option>Low</option>
+            </select>
+          </div>
+        </div>
+
+        <h3>1. Executive summary</h3>
+        <p class="hint">What happened, in plain language a non-technical manager can follow: how the attacker got in, what they reached, and the business impact.</p>
+        <textarea data-field="exec" rows="4" aria-label="Executive summary"></textarea>
+
+        <h3>2. Scope</h3>
+        <p class="hint">Hosts, accounts and data involved. Include what the attacker tried and failed to reach, and the alerts you excluded and why. Start a line with "- " to make a list.</p>
+        <textarea data-field="scope" rows="5" aria-label="Scope"></textarea>
+
+        <h3>3. Timeline (UTC)</h3>
+        <p class="hint">One event per line, starting with the UTC time, for example "08:12 Phishing email delivered to y.cohen".</p>
+        <div class="actions" style="margin-top:0">
+          <button class="btn secondary" type="button" id="fillTimelineBtn">Fill from tasks 1 and 2</button>
+          <span class="status" id="timelineStatus" role="status"></span>
+        </div>
+        <textarea data-field="timeline" rows="6" aria-label="Timeline"></textarea>
+
+        <h3>4. Findings</h3>
+        <p class="hint">For each attack alert: the evidence and indicators in the log, and how it deviates from the baseline.</p>
+        <div class="tablewrap">
+          <table id="findingsTable">
+            <thead><tr><th style="width:230px">Alert</th><th>Evidence and indicators</th><th>Deviation from baseline</th><th style="width:70px"></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="rowtools">
+          <button class="btn secondary" type="button" data-addrow="findings">Add row</button>
+          <button class="btn quiet" type="button" data-addattack="findings">Add a row for each alert classified as part of the attack</button>
+        </div>
+
+        <h3>5. MITRE ATT&amp;CK mapping</h3>
+        <p class="hint">Tactic, technique ID and name, and why the alert fits. Map only what the log supports.</p>
+        <div class="tablewrap">
+          <table id="attackTable">
+            <thead><tr><th style="width:230px">Alert</th><th style="width:200px">Tactic</th><th>Technique</th><th>Justification</th><th style="width:70px"></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+            <div class="rowtools">
+          <button class="btn secondary" type="button" data-addrow="attack">Add row</button>
+          <button class="btn quiet" type="button" data-addattack="attack">Add a row for each alert classified as part of the attack</button>
+        </div>
+
+        <h3>6. Indicators of compromise</h3>
+        <p class="hint">Domains, addresses, file names, paths, registry values and command lines another team can search for. Defang domains and URLs, for example example[.]com.</p>
+        <textarea data-field="iocs" rows="5" aria-label="Indicators of compromise"></textarea>
+
+        <h3>7. Actions taken</h3>
+        <p class="hint">What you verified and what you did or requested before escalating.</p>
+        <textarea data-field="actions" rows="4" aria-label="Actions taken"></textarea>
+
+        <h3>8. Not checked</h3>
+        <p class="hint">Work that still needs to be done, for Tier 2 to pick up.</p>
+        <textarea data-field="notchecked" rows="4" aria-label="Not checked"></textarea>
+
+        <h3>9. Open questions</h3>
+        <p class="hint">What the available logs cannot tell you. Mark conclusions that are inferences rather than facts in the log.</p>
+        <textarea data-field="open" rows="4" aria-label="Open questions"></textarea>
+
+        <h3>10. Recommendations</h3>
+        <p class="hint">Immediate containment first, then longer-term fixes that would have stopped or detected this attack earlier.</p>
+        <textarea data-field="rec" rows="5" aria-label="Recommendations"></textarea>
+
+        <h3>11. Severity rationale</h3>
+        <p class="hint">Why the severity you chose above is right.</p>
+        <textarea data-field="sevjust" rows="3" aria-label="Severity rationale"></textarea>
+      </div>
+
+      <div class="actions">
+        <button class="btn" type="button" id="previewBtn">Preview report</button>
+        <button class="btn secondary" type="button" id="exportBtn">Export as PDF</button>
+        <span class="status" id="exportStatus" role="status">The preview shows the report as it will print. Export opens the print dialog, which works when this page is opened as a file in a browser.</span>
+      </div>
+      <div class="model rdoc" id="reportPreview" hidden></div>
+    </section>
+
+    <!-- ======================= MODEL ANSWER ======================= -->
+    <section id="model" class="block">
+      <h2>Model answer</h2>
+      <p>Open this after you have written your own report. It is one well-supported answer, not the only one. ATT&amp;CK references follow version 20, in which the former Defense Evasion tactic is split into Stealth (TA0005) and Defense Impairment (TA0112).</p>
+      <details class="answers">
+        <summary>Show the model report</summary>
+        <div class="model rdoc" id="modelReport"></div>
+      </details>
+    </section>
+  </main>
+
+  <footer class="pagefoot">
+    <span>Alderline Payments is a fictional company. All hosts, accounts, domains and events in this exercise are invented.</span>
+    <button class="btn quiet" type="button" id="clearBtn">Clear all my answers</button>
+  </footer>
+</div>
+
+<div id="print-report" class="rdoc"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ------------------------------------------------------------------
+     Alert data. Times are as recorded by the source; "utc" is the
+     converted time used to check answers.
+     tz: p3 = UTC+3, z = UTC, m5 = UTC-5
+  ------------------------------------------------------------------ */
+  var ALERTS = [
+    { id: 1, cat: "attack", title: "RDP logon to DC01 as admin_dana", source: "Windows Security log, DC01", raw: "14:00", tz: "p3", utc: "11:00", sev: "medium",
+      log: "EventID 4624 | LogonType 10 | Account: ALDERLINE\\admin_dana | Src IP: 10.10.2.45 | Workstation Name: WKS-YCOHEN" },
+    { id: 2, cat: "noise", title: "Scheduled backup job completed on BKP01", source: "Windows event log, BKP01", raw: "05:00", tz: "p3", utc: "02:00", sev: "info",
+      log: "Task: Nightly_Backup_Job | Account: svc_backup | Source: 127.0.0.1 (console) | Status: Completed | Duration: 47 min" },
+    { id: 3, cat: "attack", title: "Outbound transfer of 1.4 GB from WKS-YCOHEN", source: "Web proxy, HTTPS outbound", raw: "15:45", tz: "p3", utc: "12:45", sev: "high",
+      log: "Src: 10.10.2.45 | Dst: filebin-share.net | Method: POST | Bytes Out: 1.4 GB | Category: Uncategorized Cloud Storage | Action: Allowed" },
+    { id: 4, cat: "unrelated", title: "USB storage device connected to WKS-NLEVI", source: "DLP agent, WKS-NLEVI", raw: "12:50", tz: "p3", utc: "09:50", sev: "low",
+      log: "Host: WKS-NLEVI | User: n.levi | Event: Removable Storage Connected | Device: USB 3.0 Mass Storage | Policy: Removable-Media-Monitor" },
+    { id: 5, cat: "attack", title: "powershell.exe started by WINWORD.EXE on WKS-YCOHEN", source: "EDR", raw: "03:47", tz: "m5", utc: "08:47", sev: "medium",
+      log: "Host: WKS-YCOHEN | Parent Process: WINWORD.EXE | Child Process: powershell.exe -nop -w hidden -enc [base64 payload truncated] | Detection Rule ID: EDR-0472" },
+    { id: 6, cat: "noise", title: "Repeated blocked connections from an external address", source: "Firewall, perimeter", raw: "08:00", tz: "z", utc: "08:00", sev: "low",
+      log: "Action: DENY x23 | Src: 185.221.x.x | Dst: 10.10.0.5 (WEB01) | Ports: 21-8080 sequential | Follow-up Activity (24h): none recorded" },
+    { id: 7, cat: "attack", title: "SMB connection from WKS-YCOHEN to DB01 blocked", source: "Firewall, internal segmentation", raw: "12:20", tz: "z", utc: "12:20", sev: "low",
+      log: "Action: DENY | Src: 10.10.2.45 | Dst: 10.10.1.30 (DB01) | Port: 445/TCP | Rule ID: FW-SEG-114" },
+    { id: 8, cat: "attack", title: "Email with a .docm attachment delivered to y.cohen", source: "Email security gateway", raw: "08:12", tz: "z", utc: "08:12", sev: "low",
+      log: "Sender: billing-support@invoice-verify-secure.com | Recipient: y.cohen@alderline.co.il | Attachment: Invoice_48213.docm | Verdict: Delivered" },
+    { id: 9, cat: "noise", title: "RDP logon to DC01 as admin_dana", source: "Windows Security log, DC01", raw: "10:05", tz: "p3", utc: "07:05", sev: "medium",
+      log: "EventID 4624 | LogonType 10 | Account: ALDERLINE\\admin_dana | Src IP: 10.10.2.15 | Workstation Name: WKS-DANA" },
+    { id: 10, cat: "attack", title: "rundll32.exe accessed lsass.exe memory on WKS-YCOHEN", source: "EDR", raw: "05:30", tz: "m5", utc: "10:30", sev: "high",
+      log: "Host: WKS-YCOHEN | Process: rundll32.exe accessing lsass.exe (PID 692) | Access Pattern: MiniDump | Detection Rule ID: EDR-0891" },
+    { id: 11, cat: "attack", title: "vssadmin delete shadows run as svc_backup", source: "Windows Security log, BKP01", raw: "16:10", tz: "p3", utc: "13:10", sev: "medium",
+      log: "EventID 4688 | Account: svc_backup | Command Line: vssadmin.exe delete shadows /all /quiet | Src IP: 10.10.2.45 | Result: Access Denied" },
+    { id: 12, cat: "unrelated", title: "File copied to USB storage on WKS-NLEVI", source: "DLP agent, WKS-NLEVI", raw: "12:58", tz: "p3", utc: "09:58", sev: "medium",
+      log: "Host: WKS-NLEVI | File: expense_template.xlsx (37 KB) | Destination: E:\\ | Policy Action: Logged, Not Blocked" },
+    { id: 13, cat: "attack", title: "DisableAntiSpyware registry value changed on WKS-YCOHEN", source: "EDR", raw: "04:40", tz: "m5", utc: "09:40", sev: "high",
+      log: "Host: WKS-YCOHEN | Registry: HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\DisableAntiSpyware = 1 | Actor Process: powershell.exe (PID 4820)" },
+    { id: 14, cat: "noise", title: "VPN account locked after 5 failed logons", source: "VPN concentrator", raw: "10:50", tz: "z", utc: "10:50", sev: "low",
+      log: "Account: user_rgold | Result: ACCOUNT_LOCKED (5 failed attempts) | Src IP: 84.x.x.x | Resolution: self-service password reset" },
+    { id: 15, cat: "attack", title: "File reads on \\\\FS01\\Finance$ by admin_dana", source: "Windows Security log, FS01", raw: "14:20", tz: "p3", utc: "11:20", sev: "medium",
+      log: "EventID 4663 | Account: admin_dana | Object: \\\\FS01\\Finance$\\* | Access: ReadData | Session Source: DC01 | Count: 412 files / 6 minutes" },
+    { id: 16, cat: "attack", title: "New scheduled task created on WKS-YCOHEN", source: "Windows Security log, WKS-YCOHEN", raw: "12:15", tz: "p3", utc: "09:15", sev: "low",
+      log: "EventID 4698 | Task Name: \\Microsoft\\Windows\\WinUpdateCheck | Action: C:\\Users\\ycohen\\AppData\\Local\\Temp\\svhost.exe | Trigger: At logon" },
+    { id: 17, cat: "noise", title: "APP01 server restart", source: "Windows event log, APP01", raw: "12:00", tz: "p3", utc: "09:00", sev: "info",
+      log: "EventID 1074 | Reason Code: Scheduled patch cycle | Initiated By: WSUS-SVC" },
+    { id: 18, cat: "attack", title: "High-rate DNS queries from WKS-YCOHEN", source: "Firewall, DNS logging", raw: "12:00", tz: "z", utc: "12:00", sev: "medium",
+      log: "Src: 10.10.2.45 | Query: 8f2ac91e0b.update-cdn-relay.net (+339 similar) | Rate: 340 queries/min | Subdomain Entropy: high" },
+    { id: 19, cat: "attack", title: "whoami /all and net group run on WKS-YCOHEN", source: "EDR", raw: "05:05", tz: "m5", utc: "10:05", sev: "low",
+      log: "Host: WKS-YCOHEN | Process: cmd.exe | Command Line: whoami /all && net group \"Domain Admins\" /domain" },
+    { id: 20, cat: "noise", title: "svc_sql connection from APP01 to DB01", source: "Windows event log, DB01", raw: "17:00", tz: "p3", utc: "14:00", sev: "low",
+      log: "Account: svc_sql | Source: APP01 (10.10.1.25) | Port: 1433/TCP | Protocol: TDS" }
+  ];
+
+  var TZ_LABEL = { p3: "UTC+3", z: "UTC", m5: "UTC\u22125" };
+  var SEV_LABEL = { high: "High", medium: "Medium", low: "Low", info: "Informational" };
+  var CAT_LABEL = { attack: "Part of the attack", noise: "Routine noise", unrelated: "Unrelated incident" };
+
+  var CLASS_KEY = {
+    1: "Domain Admin RDP session from the compromised workstation (10.10.2.45), not from WKS-DANA. Compare with ticket 9.",
+    2: "Matches the svc_backup baseline exactly: local console, 02:00 UTC, completed.",
+    3: "1.4 GB uploaded from the compromised host to an unsanctioned file-sharing site, after the Finance share was read.",
+    4: "Different host and user from the attack, and no shared indicator. Monitored by DLP policy.",
+    5: "Word starting hidden, encoded PowerShell on a Finance workstation, 35 minutes after the .docm was delivered.",
+    6: "Port scan from the internet against WEB01. All 23 attempts denied and no follow-up activity.",
+    7: "Workstation trying to reach DB01 over SMB, against the segmentation baseline. Blocked.",
+    8: "Macro-enabled attachment from an unknown external sender to y.cohen. First step of the chain.",
+    9: "admin_dana from her own workstation, WKS-DANA, inside the 06:00 to 15:00 UTC window.",
+    10: "rundll32.exe opening LSASS memory with a MiniDump pattern: credential dumping.",
+    11: "svc_backup used from a workstation to delete shadow copies. Denied, but still an attack step.",
+    12: "37 KB file copied to USB on WKS-NLEVI. Logged, not blocked. Worth a separate low-priority review; no link to the attack chain.",
+    13: "Defender turned off through the registry by PowerShell on the compromised host.",
+    14: "Five failed VPN logons, then a self-service reset. No overlap with any attack indicator.",
+    15: "412 Finance files read in 6 minutes from the DC01 session, against a baseline of fewer than 20 files a day.",
+    16: "Scheduled task running a svchost.exe look-alike (svhost.exe) from a user Temp folder at logon.",
+    17: "Restart for the scheduled patch cycle, initiated by WSUS-SVC.",
+    18: "340 queries a minute with random, high-entropy subdomains: DNS tunnelling.",
+    19: "Privilege and Domain Admins group discovery from a Finance workstation.",
+    20: "svc_sql from APP01 to DB01 on TCP 1433, exactly as the baseline describes."
+  };
+
+  /* ------------------------------------------------------------------
+     Model report
+  ------------------------------------------------------------------ */
+  var MODEL = {
+    title: "Phishing leading to Domain Admin compromise and data theft from the Finance share",
+    analyst: "Model answer",
+    date: "2026-03-10",
+    sev: "Critical",
+    exec:
+      "On 10 March 2026 an attacker gained access to the Alderline Payments network through a phishing email sent to a Finance employee, y.cohen. The email carried a Word document with a macro. When it was opened, the macro ran hidden PowerShell on the employee's workstation, WKS-YCOHEN.\n\n" +
+      "Over the next four hours the attacker set up persistence, turned off Microsoft Defender, accessed stored credentials, and used the account of a Domain Administrator, admin_dana, to open a remote session on the domain controller. From that session 412 files were read from the Finance share in six minutes. About 85 minutes later, 1.4 GB was uploaded from the employee's workstation to an external file-sharing site.\n\n" +
+      "Attempts to reach the customer database and to delete backup snapshots were blocked. The incident is rated Critical: a Domain Administrator account is in the attacker's hands, and financial data has very likely left the company.",
+    scope:
+      "- Compromised host: WKS-YCOHEN (10.10.2.45), the first host infected.\n" +
+      "- Accounts used by the attacker: y.cohen (session on WKS-YCOHEN), ALDERLINE\\admin_dana (Domain Admins), svc_backup.\n" +
+      "- Systems accessed: DC01 (RDP session from WKS-YCOHEN), FS01 Finance$ share (412 files read).\n" +
+      "- Attempted without success: DB01 (SMB blocked by FW-SEG-114), BKP01 (shadow copy deletion returned Access Denied).\n" +
+      "- Data: 1.4 GB uploaded to filebin-share.net.\n" +
+      "- Excluded as routine noise: tickets 2, 6, 9, 14, 17 and 20, which match the baseline.\n" +
+      "- Excluded as an unrelated incident: tickets 4 and 12, USB activity on WKS-NLEVI. No shared host, account or indicator with the attack. Referred for a separate review.",
+    timeline:
+      "08:12 Phishing email with Invoice_48213.docm delivered to y.cohen (ticket 8)\n" +
+      "08:47 WINWORD.EXE starts hidden, encoded PowerShell on WKS-YCOHEN (ticket 5)\n" +
+      "09:15 Scheduled task WinUpdateCheck created to run svhost.exe from Temp at logon (ticket 16)\n" +
+      "09:40 Defender turned off through the DisableAntiSpyware registry value (ticket 13)\n" +
+      "10:05 whoami /all and net group \"Domain Admins\" run on WKS-YCOHEN (ticket 19)\n" +
+      "10:30 rundll32.exe dumps LSASS memory on WKS-YCOHEN (ticket 10)\n" +
+      "11:00 RDP from WKS-YCOHEN to DC01 as admin_dana (ticket 1)\n" +
+      "11:20 412 files read from \\\\FS01\\Finance$ in 6 minutes, session source DC01 (ticket 15)\n" +
+      "12:00 DNS tunnelling to update-cdn-relay.net from WKS-YCOHEN (ticket 18)\n" +
+      "12:20 SMB connection from WKS-YCOHEN to DB01 blocked (ticket 7)\n" +
+      "12:45 1.4 GB uploaded from WKS-YCOHEN to filebin-share.net (ticket 3)\n" +
+      "13:10 Shadow copy deletion on BKP01 as svc_backup, denied (ticket 11)",
+    findings: [
+      { id: 8, ev: "Sender billing-support@invoice-verify-secure.com, recipient y.cohen, attachment Invoice_48213.docm, verdict Delivered.",
+        dev: "Macro-enabled Office attachment from an external domain with no known business relationship, delivered to a Finance user. Word starts PowerShell on the recipient's workstation 35 minutes later." },
+      { id: 5, ev: "WINWORD.EXE starts powershell.exe -nop -w hidden -enc on WKS-YCOHEN (EDR-0472).",
+        dev: "The baseline allows no encoded PowerShell on employee workstations. A hidden, encoded command launched by Word points to the macro running." },
+      { id: 16, ev: "Task \\Microsoft\\Windows\\WinUpdateCheck runs C:\\Users\\ycohen\\AppData\\Local\\Temp\\svhost.exe at logon.",
+        dev: "The baseline allows no user-created scheduled tasks. The binary runs from a Temp folder, its name imitates svchost.exe, and the task name imitates a Windows update task." },
+      { id: 13, ev: "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\DisableAntiSpyware set to 1 by powershell.exe (PID 4820).",
+        dev: "The baseline allows no registry changes that turn off protection. Made by PowerShell on the same host 53 minutes after the first execution." },
+      { id: 19, ev: "cmd.exe runs whoami /all && net group \"Domain Admins\" /domain.",
+        dev: "A Finance user has no reason to list their own privileges or the members of Domain Admins. This tells the attacker which accounts are worth stealing." },
+      { id: 10, ev: "rundll32.exe opens lsass.exe (PID 692) with a MiniDump access pattern (EDR-0891).",
+        dev: "No legitimate reason for rundll32.exe to read LSASS memory. The pattern matches credential dumping through a signed Windows binary." },
+      { id: 1, ev: "EventID 4624, logon type 10, ALDERLINE\\admin_dana, source 10.10.2.45 (WKS-YCOHEN).",
+        dev: "admin_dana signs in only from WKS-DANA, as she did at 07:05 (ticket 9). An RDP session to the domain controller from the compromised workstation, 30 minutes after LSASS access, shows her credentials in the attacker's use." },
+      { id: 15, ev: "EventID 4663, admin_dana, ReadData on \\\\FS01\\Finance$\\*, session source DC01, 412 files in 6 minutes.",
+        dev: "The baseline is fewer than 20 files a day per user. About 69 files a minute is not manual browsing, and it starts 20 minutes after the suspicious DC01 session." },
+      { id: 18, ev: "Source 10.10.2.45, queries such as 8f2ac91e0b.update-cdn-relay.net, 340 a minute, high subdomain entropy.",
+        dev: "Random subdomains at machine speed from the compromised host fit DNS tunnelling used as a command and control channel." },
+      { id: 7, ev: "10.10.2.45 to 10.10.1.30 (DB01) on TCP 445, denied by FW-SEG-114.",
+        dev: "Workstations never connect to DB01. An attempt to reach the database server, stopped by segmentation." },
+      { id: 3, ev: "10.10.2.45 to filebin-share.net, POST, 1.4 GB, category Uncategorized Cloud Storage, allowed.",
+        dev: "Large upload from the compromised host to an unsanctioned file-sharing site, 85 minutes after the Finance share was read." },
+      { id: 11, ev: "EventID 4688 on BKP01, svc_backup runs vssadmin.exe delete shadows /all /quiet from 10.10.2.45, result Access Denied.",
+        dev: "svc_backup runs only locally on BKP01; here it is used from WKS-YCOHEN. Deleting shadow copies prevents recovery. The attempt failed, but it shows the attacker also holds svc_backup's credentials." }
+    ],
+    attack: [
+      { id: 8, tac: "Initial Access (TA0001)", tech: "T1566.001 Phishing: Spearphishing Attachment", why: "Malicious Office attachment sent by email to get code running on the victim's workstation." },
+      { id: 5, tac: "Execution (TA0002)", tech: "T1204.002 User Execution: Malicious File\nT1059.001 Command and Scripting Interpreter: PowerShell", why: "The user opened the document; its macro ran hidden, encoded PowerShell." },
+      { id: 16, tac: "Persistence (TA0003)\nStealth (TA0005)", tech: "T1053.005 Scheduled Task/Job: Scheduled Task\nT1036.005 Masquerading: Match Legitimate Resource Name or Location", why: "Scheduled task re-runs the payload at logon. Task and file names imitate Windows components." },
+      { id: 13, tac: "Defense Impairment (TA0112)", tech: "T1685 Disable or Modify Tools\nT1112 Modify Registry", why: "Defender turned off by setting DisableAntiSpyware in the registry." },
+      { id: 19, tac: "Discovery (TA0007)", tech: "T1033 System Owner/User Discovery\nT1069.002 Permission Groups Discovery: Domain Groups", why: "whoami /all lists the current user's privileges; net group lists the Domain Admins members." },
+      { id: 10, tac: "Credential Access (TA0006)\nStealth (TA0005)", tech: "T1003.001 OS Credential Dumping: LSASS Memory\nT1218.011 System Binary Proxy Execution: Rundll32", why: "LSASS memory dumped through rundll32.exe, a signed Windows binary that draws less attention." },
+      { id: 1, tac: "Lateral Movement (TA0008)\nPrivilege Escalation (TA0004)", tech: "T1021.001 Remote Services: Remote Desktop Protocol\nT1078.002 Valid Accounts: Domain Accounts", why: "RDP to the domain controller with a Domain Admin account from a workstation she never uses." },
+      { id: 15, tac: "Collection (TA0009)", tech: "T1039 Data from Network Shared Drive", why: "Bulk read of the Finance share before the upload." },
+      { id: 18, tac: "Command and Control (TA0011)", tech: "T1071.004 Application Layer Protocol: DNS\nT1572 Protocol Tunneling", why: "Traffic hidden in DNS queries with encoded subdomains. The log shows the channel, not whether data left through it." },
+      { id: 7, tac: "Lateral Movement (TA0008), attempt", tech: "T1021.002 Remote Services: SMB/Windows Admin Shares", why: "SMB connection to DB01, blocked by segmentation." },
+      { id: 3, tac: "Exfiltration (TA0010)", tech: "T1567.002 Exfiltration Over Web Service: Exfiltration to Cloud Storage", why: "1.4 GB uploaded over HTTPS to a file-sharing service." },
+      { id: 11, tac: "Impact (TA0040), attempt\nStealth (TA0005)", tech: "T1490 Inhibit System Recovery\nT1078 Valid Accounts", why: "Shadow copy deletion with stolen svc_backup credentials. Denied." }
+    ],
+    iocs:
+      "- Sender domain: invoice-verify-secure[.]com (billing-support@invoice-verify-secure[.]com)\n" +
+      "- Attachment: Invoice_48213.docm\n" +
+      "- Command and control domain: update-cdn-relay[.]net, random subdomains such as 8f2ac91e0b.update-cdn-relay[.]net\n" +
+      "- Exfiltration destination: filebin-share[.]net\n" +
+      "- File: C:\\Users\\ycohen\\AppData\\Local\\Temp\\svhost.exe\n" +
+      "- Scheduled task: \\Microsoft\\Windows\\WinUpdateCheck\n" +
+      "- Registry: HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\DisableAntiSpyware = 1\n" +
+      "- Command line: powershell.exe -nop -w hidden -enc, with WINWORD.EXE as parent\n" +
+      "- Command line: whoami /all && net group \"Domain Admins\" /domain\n" +
+      "- Command line: vssadmin.exe delete shadows /all /quiet\n" +
+      "- Process access: rundll32.exe opening lsass.exe with MiniDump access",
+    actions:
+      "- Correlated the 20 alerts and separated 12 attack events from 6 routine events and 2 unrelated DLP events.\n" +
+      "- Confirmed in the firewall log that the SMB connection to DB01 was denied, and in the BKP01 log that the shadow copy deletion returned Access Denied.\n" +
+      "- Opened a Critical incident and escalated it to Tier 2.\n" +
+      "- Requested network isolation of WKS-YCOHEN through the EDR.\n" +
+      "- Requested that admin_dana, svc_backup and y.cohen be disabled until their credentials are reset.\n" +
+      "- Requested blocking of invoice-verify-secure[.]com, update-cdn-relay[.]net and filebin-share[.]net on the email gateway, proxy and DNS.",
+    notchecked:
+      "- Memory and disk forensics on WKS-YCOHEN, including svhost.exe and the decoded PowerShell command.\n" +
+      "- Everything done in the DC01 session besides the FS01 reads, and any persistence created on DC01.\n" +
+      "- Whether other employees received the same or a similar email.\n" +
+      "- A search for the indicators above across all hosts.\n" +
+      "- Which files were uploaded, for regulatory and customer notification.\n" +
+      "- Whether the BKP01 backups are complete and restorable.",
+    open:
+      "- How admin_dana's credentials were obtained. The LSASS dump at 10:30 is the likely source, but nothing shows admin_dana signing in to WKS-YCOHEN, so her credentials would not normally be cached there. [Inference]\n" +
+      "- How svc_backup's credentials were obtained. The account only runs on BKP01.\n" +
+      "- How the Finance files, read in the DC01 session, reached WKS-YCOHEN before the upload. No transfer between the two hosts is logged.\n" +
+      "- Whether the 1.4 GB upload contains the Finance files. The proxy log shows volume and destination, not content. [Inference]\n" +
+      "- Whether data also left through the DNS channel, or it carried commands only.\n" +
+      "- What the encoded PowerShell command and svhost.exe do. No decoded command, file hash or sample is available.",
+    rec:
+      "Immediate:\n" +
+      "- Isolate WKS-YCOHEN and keep it powered on for memory capture.\n" +
+      "- Reset the passwords of admin_dana, svc_backup and y.cohen. Tier 2 to decide on a double krbtgt reset once the extent of DC01 access is known.\n" +
+      "- Block the three domains above and remove the phishing email from all mailboxes.\n" +
+      "\n" +
+      "Longer term:\n" +
+      "- Block Office applications from creating child processes (Attack Surface Reduction rule).\n" +
+      "- Turn on Defender Tamper Protection so registry changes cannot switch it off.\n" +
+      "- Turn on LSA protection and Credential Guard on workstations.\n" +
+      "- Allow RDP to domain controllers only from dedicated admin workstations.\n" +
+      "- Alert when a service account is used from any host other than its own.\n" +
+      "- Block uploads to uncategorised file-sharing sites, and add DNS tunnelling detection.\n" +
+      "- Phishing awareness training for the Finance team, focused on macro-enabled attachments.",
+    sevjust:
+      "Critical. The attacker controlled a Domain Admin account and reached the domain controller, read 412 files from the Finance share, and uploaded 1.4 GB to an external site shortly afterwards. They also tried to remove the ability to restore from backup snapshots."
+  };
+
+  /* ------------------------------------------------------------------
+     Helpers
+  ------------------------------------------------------------------ */
+  var byId = {};
+  ALERTS.forEach(function (a) { byId[a.id] = a; });
+  var INITIAL = ALERTS.map(function (a) { return a.id; });
+  var CORRECT = ALERTS.slice().sort(function (a, b) { return a.utc < b.utc ? -1 : 1; }).map(function (a) { return a.id; });
+
+  function $(sel, root) { return (root || document).querySelector(sel); }
+  function $all(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+  function el(tag, attrs, children) {
+    var n = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) {
+      if (k === "class") n.className = attrs[k];
+      else if (k === "text") n.textContent = attrs[k];
+      else n.setAttribute(k, attrs[k]);
+    });
+    (children || []).forEach(function (c) { if (c != null) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return n;
+  }
+  function autoGrow(t) { t.style.height = "auto"; t.style.height = (t.scrollHeight + 2) + "px"; }
+
+  /* ------------------------------------------------------------------
+     Saved state (browser only)
+  ------------------------------------------------------------------ */
+  var KEY = "alderline-exercise-v1";
+  var state = { order: INITIAL.slice(), cls: {}, fields: {}, findings: [], attack: [], done1: false, done2: false };
+  try {
+    var saved = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (saved && typeof saved === "object") {
+      if (Array.isArray(saved.order) && saved.order.length === 20) state.order = saved.order;
+      state.cls = saved.cls || {};
+      state.fields = saved.fields || {};
+      state.findings = Array.isArray(saved.findings) ? saved.findings : [];
+      state.attack = Array.isArray(saved.attack) ? saved.attack : [];
+      state.done1 = !!saved.done1;
+      state.done2 = !!saved.done2;
+    }
+  } catch (e) { /* storage unavailable: start fresh */ }
+  var saveTimer = null;
+  function save() {
+    applyLocks();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    }, 250);
+  }
+
+  /* ------------------------------------------------------------------
+     Task 1: ordering
+  ------------------------------------------------------------------ */
+  var ARROW_UP = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 7l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+  var ARROW_DOWN = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+  var GRIP = '<svg class="grip" width="8" height="14" viewBox="0 0 8 14" aria-hidden="true"><g fill="currentColor"><circle cx="2" cy="2" r="1.2"/><circle cx="6" cy="2" r="1.2"/><circle cx="2" cy="7" r="1.2"/><circle cx="6" cy="7" r="1.2"/><circle cx="2" cy="12" r="1.2"/><circle cx="6" cy="12" r="1.2"/></g></svg>';
+  var SV = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">';
+  var ICON = {
+    attack: SV + '<circle cx="8" cy="8" r="4.5"/><path d="M8 1.5v3M8 11.5v3M1.5 8h3M11.5 8h3"/></svg>',
+    noise: SV + '<path d="M1 8h2.5l1.5-4.5 2.5 9 2-6.5 1.2 2H15"/></svg>',
+    unrelated: SV + '<path d="M2 8h4.5l3-4.5H14M6.5 8l3 4.5H14"/></svg>'
+  };
+
+  var orderBody = $("#orderBody");
+
+  function mark(card, ok, text) {
+    card.classList.remove("row-ok", "row-bad");
+    void card.offsetWidth;
+    card.classList.add(ok ? "row-ok" : "row-bad");
+    card.querySelector(".mark").textContent = (ok ? "✓ " : "✕ ") + text;
+  }
+  function unmark(card) {
+    card.classList.remove("row-ok", "row-bad");
+    card.querySelector(".mark").textContent = "";
+  }
+
+  function orderRow(a) {
+    var card = el("div", { class: "acard", draggable: "true", "data-id": a.id });
+    var handle = el("div", { class: "handle" });
+    var idline = el("div", { class: "idline" });
+    idline.innerHTML = GRIP + '<span class="tid"><small>Ticket</small>' + a.id + "</span>";
+    handle.appendChild(idline);
+    var mv = el("span", { class: "mv" });
+    var up = el("button", { type: "button", "aria-label": "Move ticket " + a.id + " up", "data-move": "-1" });
+    up.innerHTML = ARROW_UP;
+    var down = el("button", { type: "button", "aria-label": "Move ticket " + a.id + " down", "data-move": "1" });
+    down.innerHTML = ARROW_DOWN;
+    mv.appendChild(up); mv.appendChild(down);
+    handle.appendChild(mv);
+    card.appendChild(handle);
+    card.appendChild(el("div", { class: "main" }, [
+      el("div", { class: "alert-title", text: a.title }),
+      el("div", { class: "alert-source", text: a.source }),
+      el("div", { class: "log", text: a.log })
+    ]));
+    var meta = el("div", { class: "meta" });
+    meta.appendChild(el("span", { class: "tz " + a.tz, title: TZ_LABEL[a.tz] }, [a.raw, el("small", { text: TZ_LABEL[a.tz] })]));
+    meta.appendChild(el("div", { class: "utc", text: a.utc + " UTC" }));
+    meta.appendChild(el("span", { class: "sev " + a.sev, text: SEV_LABEL[a.sev] }));
+    meta.appendChild(el("span", { class: "mark", role: "status" }));
+    card.appendChild(meta);
+    return card;
+  }
+
+  function renderOrder(order) {
+    orderBody.textContent = "";
+    order.forEach(function (id) { orderBody.appendChild(orderRow(byId[id])); });
+  }
+  function orderCards() { return $all(".acard", orderBody); }
+  function currentOrder() { return orderCards().map(function (r) { return +r.getAttribute("data-id"); }); }
+  function clearOrderMarks() {
+    orderBody.classList.remove("show-utc");
+    orderCards().forEach(unmark);
+    var res = $("#orderResult"); res.className = "result"; res.textContent = "";
+  }
+  function orderChanged() {
+    var o = currentOrder();
+    if (o.join() !== state.order.join()) { state.order = o; state.done1 = false; }
+    save();
+    clearOrderMarks();
+  }
+
+  orderBody.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-move]");
+    if (!b) return;
+    var row = b.closest(".acard");
+    var dir = +b.getAttribute("data-move");
+    if (dir < 0 && row.previousElementSibling) orderBody.insertBefore(row, row.previousElementSibling);
+    else if (dir > 0 && row.nextElementSibling) orderBody.insertBefore(row.nextElementSibling, row);
+    else return;
+    orderChanged();
+    b.focus();
+  });
+
+  var dragRow = null;
+  orderBody.addEventListener("dragstart", function (e) {
+    dragRow = e.target.closest(".acard");
+    if (!dragRow) return;
+    e.dataTransfer.effectAllowed = "move";
+    try { e.dataTransfer.setData("text/plain", dragRow.getAttribute("data-id")); } catch (err) { /* ignore */ }
+    setTimeout(function () { if (dragRow) dragRow.classList.add("dragging"); }, 0);
+  });
+  orderBody.addEventListener("dragover", function (e) {
+    if (!dragRow) return;
+    e.preventDefault();
+    var rows = $all(".acard:not(.dragging)", orderBody);
+    var after = null, best = -Infinity;
+    rows.forEach(function (r) {
+      var box = r.getBoundingClientRect();
+      var off = e.clientY - box.top - box.height / 2;
+      if (off < 0 && off > best) { best = off; after = r; }
+    });
+    if (after) orderBody.insertBefore(dragRow, after); else orderBody.appendChild(dragRow);
+  });
+  orderBody.addEventListener("drop", function (e) { e.preventDefault(); });
+  orderBody.addEventListener("dragend", function () {
+    if (dragRow) dragRow.classList.remove("dragging");
+    dragRow = null;
+    orderChanged();
+  });
+
+  function checkOrder() {
+    var rows = orderCards();
+    var ids = currentOrder();
+    var errors = [];
+    orderBody.classList.add("show-utc");
+    rows.forEach(function (row, i) {
+      if (i > 0 && byId[ids[i]].utc < byId[ids[i - 1]].utc) {
+        mark(row, false, "Earlier than the card above");
+        errors.push({ pos: i + 1, prev: byId[ids[i - 1]], cur: byId[ids[i]] });
+      } else {
+        mark(row, true, "In sequence");
+      }
+    });
+    state.done1 = !errors.length;
+    save();
+    var res = $("#orderResult");
+    res.textContent = "";
+    if (!errors.length) {
+      res.className = "result ok";
+      res.appendChild(el("strong", { text: "The order is correct." }));
+      res.appendChild(document.createTextNode(" All 20 alerts are in chronological order. The UTC time is now shown under each recorded time. Task 2 is unlocked."));
+    } else {
+      res.className = "result bad";
+      res.appendChild(el("strong", { text: errors.length === 1 ? "1 alert is out of order." : errors.length + " alerts are out of order." }));
+      res.appendChild(document.createTextNode(" Cards marked in red happened earlier than the card above them. The UTC time is now shown under each recorded time."));
+      var ul = el("ul");
+      errors.slice(0, 5).forEach(function (er) {
+        ul.appendChild(el("li", { text: "Position " + er.pos + ": ticket " + er.cur.id + " (" + er.cur.utc + " UTC) comes after ticket " + er.prev.id + " (" + er.prev.utc + " UTC)." }));
+      });
+      if (errors.length > 5) ul.appendChild(el("li", { text: "And " + (errors.length - 5) + " more." }));
+      res.appendChild(ul);
+    }
+  }
+
+  $("#checkOrderBtn").addEventListener("click", checkOrder);
+  $("#resetOrderBtn").addEventListener("click", function () { renderOrder(INITIAL); orderChanged(); });
+  $("#solveOrderBtn").addEventListener("click", function () { renderOrder(CORRECT); state.order = CORRECT.slice(); save(); checkOrder(); });
+
+  /* ------------------------------------------------------------------
+     Task 2: classification
+  ------------------------------------------------------------------ */
+  var classBody = $("#classifyBody");
+  var CATS = ["attack", "noise", "unrelated"];
+  CORRECT.forEach(function (id) {
+    var a = byId[id];
+    var saved = state.cls[a.id] || {};
+    var card = el("div", { class: "ccard", "data-id": a.id, "data-cat": saved.cat || "" });
+    var head = el("div", { class: "chead" });
+    head.innerHTML = '<span class="tid"><small>Ticket</small>' + a.id + "</span>";
+    head.appendChild(el("span", { class: "ctime", text: a.utc + " UTC" }));
+    head.appendChild(el("span", { class: "mark", role: "status" }));
+    card.appendChild(head);
+    card.appendChild(el("div", { class: "cbody" }, [el("div", { class: "alert-title", text: a.title }), el("div", { class: "log", text: a.log })]));
+
+    var seg = el("div", { class: "seg", role: "radiogroup", "aria-label": "Category for ticket " + a.id });
+    var btns = CATS.map(function (c) {
+      var b = el("button", { type: "button", class: "segbtn", role: "radio", "data-cat": c, "aria-checked": "false" });
+      b.innerHTML = ICON[c] + "<span>" + CAT_LABEL[c] + "</span>";
+      seg.appendChild(b);
+      return b;
+    });
+    var ta = el("textarea", { rows: "1", placeholder: "Reason, based on the log and the baseline", "aria-label": "Reason for ticket " + a.id });
+    ta.value = saved.why || "";
+    card.appendChild(el("div", { class: "cform" }, [seg, ta]));
+    classBody.appendChild(card);
+
+    function paint() { btns.forEach(function (b) { b.setAttribute("aria-checked", b.getAttribute("data-cat") === card.dataset.cat ? "true" : "false"); }); }
+    paint();
+    function store(resetDone) {
+      state.cls[a.id] = { cat: card.dataset.cat, why: ta.value };
+      unmark(card);
+      if (resetDone) state.done2 = false;
+      save();
+    }
+    btns.forEach(function (b) {
+      b.addEventListener("click", function () { card.dataset.cat = b.getAttribute("data-cat"); paint(); store(true); });
+    });
+    ta.addEventListener("input", function () { store(false); });
+  });
+
+  $("#checkClassBtn").addEventListener("click", function () {
+    var right = 0, blank = 0, wrong = [];
+    $all(".ccard", classBody).forEach(function (card) {
+      var a = byId[+card.getAttribute("data-id")];
+      var v = card.dataset.cat;
+      if (!v) { blank++; mark(card, false, "Choose a category"); return; }
+      if (v === a.cat) { right++; mark(card, true, "Correct"); }
+      else { wrong.push(a); mark(card, false, "Check this one"); }
+    });
+    state.done2 = right === 20;
+    save();
+    var res = $("#classResult");
+    res.textContent = "";
+    if (right === 20) {
+      res.className = "result ok";
+      res.appendChild(el("strong", { text: "All 20 alerts are classified correctly." }));
+      res.appendChild(document.createTextNode(" Task 3 is unlocked."));
+      return;
+    }
+    res.className = "result bad";
+    res.appendChild(el("strong", { text: right + " of 20 classified correctly." }));
+    if (blank) res.appendChild(document.createTextNode(" " + blank + (blank === 1 ? " alert is" : " alerts are") + " not classified yet."));
+    if (wrong.length) {
+      var ul = el("ul");
+      wrong.forEach(function (a) { ul.appendChild(el("li", { text: "Ticket " + a.id + ": expected " + CAT_LABEL[a.cat] + "." })); });
+      res.appendChild(ul);
+    }
+    res.appendChild(document.createTextNode(" Cards marked in red need another look. All 20 must be correct to unlock Task 3."));
+  });
+
+  function catKey(c) {
+    var s = el("span", { class: "catkey" });
+    s.innerHTML = ICON[c] + "<span>" + CAT_LABEL[c] + "</span>";
+    return s;
+  }
+  var keyBody = $("#classKeyBody");
+  CORRECT.map(function (id) { return byId[id]; }).forEach(function (a) {
+    keyBody.appendChild(el("tr", null, [
+      el("td", { class: "mono", text: String(a.id) }),
+      el("td", { text: a.title }),
+      el("td", null, [catKey(a.cat)]),
+      el("td", { text: CLASS_KEY[a.id] })
+    ]));
+  });
+
+  /* ------------------------------------------------------------------
+     Task 3: report form
+  ------------------------------------------------------------------ */
+  var TACTICS = ["Initial Access (TA0001)", "Execution (TA0002)", "Persistence (TA0003)", "Privilege Escalation (TA0004)", "Stealth (TA0005)", "Defense Impairment (TA0112)", "Credential Access (TA0006)", "Discovery (TA0007)", "Lateral Movement (TA0008)", "Collection (TA0009)", "Command and Control (TA0011)", "Exfiltration (TA0010)", "Impact (TA0040)"];
+
+  function tacticCell(rec) {
+    if (typeof rec.tac === "string") rec.tac = rec.tac.split("\n").map(function (s) { return s.trim(); }).filter(Boolean);
+    if (!Array.isArray(rec.tac)) rec.tac = [];
+    var wrap = el("div"), chips = el("div", { class: "chips" });
+    var sel = el("select", { "aria-label": "Add tactic" });
+    function draw() {
+      chips.textContent = "";
+      rec.tac.forEach(function (name, i) {
+        var b = el("button", { type: "button", "aria-label": "Remove " + name, text: "×" });
+        b.addEventListener("click", function () { rec.tac.splice(i, 1); draw(); save(); });
+        chips.appendChild(el("span", { class: "chip" }, [name, b]));
+      });
+      sel.textContent = "";
+      sel.appendChild(el("option", { value: "", text: rec.tac.length ? "Add another tactic" : "Add tactic" }));
+      TACTICS.forEach(function (n) { if (rec.tac.indexOf(n) === -1) sel.appendChild(el("option", { value: n, text: n })); });
+      sel.value = "";
+    }
+    sel.addEventListener("change", function () { if (sel.value) { rec.tac.push(sel.value); draw(); save(); } });
+    draw();
+    wrap.appendChild(chips);
+    wrap.appendChild(sel);
+    return wrap;
+  }
+
+  function rowHasText(r, cols) {
+    return cols.some(function (c) { var v = r[c[0]]; return Array.isArray(v) ? v.length > 0 : !!(v && String(v).trim()); });
+  }
+
+  function alertSelect(value, label) {
+    var s = el("select", { "aria-label": label });
+    s.appendChild(el("option", { value: "", text: "Select alert" }));
+    CORRECT.forEach(function (id) {
+      s.appendChild(el("option", { value: String(id), text: "Ticket " + id + ": " + byId[id].title }));
+    });
+    s.value = value ? String(value) : "";
+    return s;
+  }
+
+  var TABLES = {
+    findings: { body: $("#findingsTable tbody"), cols: [["ev", "Evidence and indicators"], ["dev", "Deviation from baseline"]] },
+    attack: { body: $("#attackTable tbody"), cols: [["tac", "Tactic"], ["tech", "Technique"], ["why", "Justification"]] }
+  };
+
+  function addRow(name, data) {
+    var t = TABLES[name];
+    var rec = data || {};
+    state[name].indexOf(rec) === -1 && state[name].push(rec);
+    var tr = el("tr");
+    var sel = alertSelect(rec.id, "Alert");
+    var cap = el("span", { class: "pick-title" });
+    function caption() { cap.textContent = sel.value ? byId[+sel.value].title : ""; }
+    caption();
+    sel.addEventListener("change", function () { rec.id = sel.value ? +sel.value : null; caption(); save(); });
+    tr.appendChild(el("td", { class: "alert-pick" }, [sel, cap]));
+    t.cols.forEach(function (c) {
+      if (c[0] === "tac") { tr.appendChild(el("td", null, [tacticCell(rec)])); return; }
+      var input = el("textarea", { rows: "2", "aria-label": c[1] });
+      input.value = rec[c[0]] || "";
+      input.addEventListener("input", function () { rec[c[0]] = input.value; save(); });
+      tr.appendChild(el("td", null, [input]));
+      if (input.tagName === "TEXTAREA") setTimeout(function () { autoGrow(input); }, 0);
+    });
+    var rm = el("button", { type: "button", class: "remove", text: "Remove" });
+    rm.addEventListener("click", function () {
+      var i = state[name].indexOf(rec);
+      if (i > -1) state[name].splice(i, 1);
+      tr.remove();
+      save();
+    });
+    tr.appendChild(el("td", null, [rm]));
+    t.body.appendChild(tr);
+    return tr;
+  }
+
+  ["findings", "attack"].forEach(function (name) {
+    var rows = state[name].slice();
+    state[name] = [];
+    if (!rows.length) rows = [{}];
+    rows.forEach(function (r) { state[name].push(r); addRow(name, r); });
+  });
+
+  $all("[data-addrow]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var tr = addRow(b.getAttribute("data-addrow"));
+      tr.querySelector("select").focus();
+      save();
+    });
+  });
+
+  function attackIdsInOrder() {
+    return currentOrder().filter(function (id) { return state.cls[id] && state.cls[id].cat === "attack"; });
+  }
+
+  $all("[data-addattack]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var name = b.getAttribute("data-addattack");
+      var ids = attackIdsInOrder();
+      if (!ids.length) { alertStatus(b, "Classify alerts as part of the attack in Task 2 first."); return; }
+      var present = {};
+      state[name].forEach(function (r) { if (r.id) present[r.id] = true; });
+      // drop empty starter rows before adding
+      $all("tr", TABLES[name].body).forEach(function (tr, i) {
+        var r = state[name][i];
+        if (r && !r.id && !rowHasText(r, TABLES[name].cols)) { tr.dataset.empty = "1"; }
+      });
+      state[name] = state[name].filter(function (r) { return r.id || rowHasText(r, TABLES[name].cols); });
+      $all('tr[data-empty="1"]', TABLES[name].body).forEach(function (tr) { tr.remove(); });
+      var added = 0;
+      ids.forEach(function (id) { if (!present[id]) { addRow(name, { id: id }); added++; } });
+      save();
+      alertStatus(b, added ? added + (added === 1 ? " row added." : " rows added.") : "Every attack alert already has a row.");
+    });
+  });
+
+  function alertStatus(btn, msg) {
+    var s = btn.parentNode.querySelector(".status");
+    if (!s) { s = el("span", { class: "status", role: "status" }); btn.parentNode.appendChild(s); }
+    s.textContent = msg;
+  }
+
+  // plain fields
+  $all("[data-field]").forEach(function (f) {
+    var k = f.getAttribute("data-field");
+    if (state.fields[k] != null) f.value = state.fields[k];
+    var evt = f.tagName === "SELECT" || f.type === "date" ? "change" : "input";
+    f.addEventListener(evt, function () { state.fields[k] = f.value; save(); });
+    if (f.tagName === "TEXTAREA") autoGrow(f);
+  });
+  document.addEventListener("input", function (e) { if (e.target.tagName === "TEXTAREA") autoGrow(e.target); });
+  window.addEventListener("load", function () { $all("textarea").forEach(autoGrow); });
+
+  var armTimers = new WeakMap();
+  function armed(btn, label) {
+    // two-step confirmation without browser dialogs: first click arms, second click confirms
+    if (armTimers.has(btn)) { clearTimeout(armTimers.get(btn)); armTimers.delete(btn); btn.textContent = btn.dataset.label; btn.classList.remove("confirm-armed"); return true; }
+    btn.dataset.label = btn.textContent;
+    btn.textContent = label;
+    btn.classList.add("confirm-armed");
+    armTimers.set(btn, setTimeout(function () { armTimers.delete(btn); btn.textContent = btn.dataset.label; btn.classList.remove("confirm-armed"); }, 4000));
+    return false;
+  }
+
+  $("#fillTimelineBtn").addEventListener("click", function () {
+    var self = this;
+    var status = $("#timelineStatus");
+    var ids = attackIdsInOrder();
+    if (!ids.length) { status.textContent = "Classify alerts as part of the attack in Task 2 first."; return; }
+    var ta = $('[data-field="timeline"]');
+    if (ta.value.trim() && !armed(self, "Click again to replace")) return;
+    var sorted = ids.slice().sort(function (a, b) { return byId[a].utc < byId[b].utc ? -1 : 1; });
+    ta.value = sorted.map(function (id) { return byId[id].utc + " " + byId[id].title + " (ticket " + id + ")"; }).join("\n");
+    state.fields.timeline = ta.value; save(); autoGrow(ta);
+    status.textContent = sorted.length + " events added in UTC order. Rewrite each line to describe what happened.";
+  });
+
+  /* ------------------------------------------------------------------
+     Report rendering (model answer and PDF export)
+  ------------------------------------------------------------------ */
+  function textBlocks(str) {
+    var frag = document.createDocumentFragment();
+    String(str).replace(/\r/g, "").split(/\n\s*\n/).forEach(function (block) {
+      var lines = block.split("\n").filter(function (l) { return l.trim() !== ""; });
+      if (!lines.length) return;
+      var list = null, para = null;
+      lines.forEach(function (line) {
+        var m = line.match(/^\s*[-*\u2022]\s+(.*)$/);
+        if (m) {
+          para = null;
+          if (!list) { list = el("ul"); frag.appendChild(list); }
+          list.appendChild(el("li", { text: m[1] }));
+        } else {
+          list = null;
+          if (!para) { para = el("p"); frag.appendChild(para); }
+          else para.appendChild(el("br"));
+          para.appendChild(document.createTextNode(line.trim()));
+        }
+      });
+    });
+    return frag;
+  }
+
+  function timelineBlock(str) {
+    var lines = String(str).replace(/\r/g, "").split("\n").filter(function (l) { return l.trim() !== ""; });
+    var re = /^\s*(\d{1,2}:\d{2})(?:\s*UTC)?\s*[-:\u2013\u2014]?\s+(.+)$/;
+    if (!lines.length || !lines.every(function (l) { return re.test(l); })) return textBlocks(str);
+    var tbody = el("tbody");
+    lines.forEach(function (l) {
+      var m = l.match(re);
+      tbody.appendChild(el("tr", null, [el("td", { class: "t-time", text: m[1] }), el("td", { text: m[2] })]));
+    });
+    return el("table", null, [colgroup(["92px", ""]), el("thead", null, [el("tr", null, [el("th", { text: "Time (UTC)" }), el("th", { text: "Event" })])]), tbody]);
+  }
+
+  function alertCell(id) {
+    var td = el("td");
+    if (id && byId[id]) {
+      td.appendChild(el("span", { class: "a-id", text: "Ticket " + id }));
+      td.appendChild(el("span", { class: "a-title", text: byId[id].title }));
+    }
+    return td;
+  }
+  function multiline(str) {
+    var td = el("td");
+    String(str || "").split("\n").forEach(function (line, i) {
+      if (i) td.appendChild(el("br"));
+      td.appendChild(document.createTextNode(line));
+    });
+    return td;
+  }
+  function colgroup(widths) {
+    return el("colgroup", null, widths.map(function (w) { return el("col", w ? { style: "width:" + w } : null); }));
+  }
+  function rowsTable(heads, widths, rows, cells) {
+    var tbody = el("tbody");
+    rows.forEach(function (r) { tbody.appendChild(el("tr", null, cells(r))); });
+    return el("table", null, [colgroup(widths), el("thead", null, [el("tr", null, heads.map(function (h) { return el("th", { text: h }); }))]), tbody]);
+  }
+  function filled(r, keys) { return r && keys.some(function (k) { var v = r[k]; return Array.isArray(v) ? v.length > 0 : (v || "").trim() !== ""; }); }
+
+  function formatDate(iso) {
+    if (!iso) return "";
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+    if (!m) return iso;
+    var months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    return (+m[3]) + " " + months[+m[2] - 1] + " " + m[1];
+  }
+
+  function buildReport(d, target) {
+    target.textContent = "";
+    target.appendChild(el("h1", { text: (d.title || "").trim() || "Incident report" }));
+    target.appendChild(el("p", { class: "rsub", text: "Incident report, case ALDERLINE-2026-0310" }));
+
+    var meta = [
+      ["Case", "ALDERLINE-2026-0310"],
+      ["Organisation", "Alderline Payments"],
+      ["Date of activity", "10 March 2026"],
+      ["Severity", d.sev || ""],
+      ["Prepared by", (d.analyst || "").trim()],
+      ["Report date", formatDate(d.date)],
+      ["Status", "Escalated to Tier 2"]
+    ].filter(function (m) { return m[1]; });
+    target.appendChild(el("table", { class: "meta" }, [colgroup(["34%", ""]), el("tbody", null, meta.map(function (m) {
+      return el("tr", null, [el("th", { text: m[0] }), el("td", { text: m[1] })]);
+    }))]));
+
+    var n = 0;
+    function section(title, content) {
+      if (!content) return;
+      n++;
+      target.appendChild(el("h2", { text: n + ". " + title }));
+      target.appendChild(content);
+    }
+    function txt(k) { return (d[k] || "").trim() ? textBlocks(d[k]) : null; }
+
+    section("Executive summary", txt("exec"));
+    section("Scope", txt("scope"));
+    section("Timeline", (d.timeline || "").trim() ? timelineBlock(d.timeline) : null);
+
+    var fr = (d.findings || []).filter(function (r) { return filled(r, ["ev", "dev"]); });
+    section("Findings", fr.length ? rowsTable(["Alert", "Evidence and indicators", "Deviation from baseline"], ["22%", "39%", "39%"], fr, function (r) {
+      return [alertCell(r.id), multiline(r.ev), multiline(r.dev)];
+    }) : null);
+
+    var ar = (d.attack || []).filter(function (r) { return filled(r, ["tac", "tech", "why"]); });
+    section("MITRE ATT&CK mapping", ar.length ? rowsTable(["Alert", "Tactic", "Technique", "Justification"], ["20%", "19%", "29%", "32%"], ar, function (r) {
+      return [alertCell(r.id), multiline(Array.isArray(r.tac) ? r.tac.join("\n") : r.tac), multiline(r.tech), multiline(r.why)];
+    }) : null);
+
+    section("Indicators of compromise", txt("iocs"));
+    section("Actions taken", txt("actions"));
+    section("Not checked", txt("notchecked"));
+    section("Open questions", txt("open"));
+    section("Recommendations", txt("rec"));
+    section("Severity rationale", txt("sevjust"));
+  }
+
+  buildReport(MODEL, $("#modelReport"));
+
+  function studentData() {
+    var d = {};
+    Object.keys(state.fields).forEach(function (k) { d[k] = state.fields[k]; });
+    d.findings = state.findings.slice().sort(function (a, b) { return CORRECT.indexOf(a.id) - CORRECT.indexOf(b.id); });
+    d.attack = state.attack.slice().sort(function (a, b) { return CORRECT.indexOf(a.id) - CORRECT.indexOf(b.id); });
+    return d;
+  }
+
+  var originalTitle = document.title;
+  function preparePrint() {
+    buildReport(studentData(), $("#print-report"));
+    document.title = (state.fields.title || "").trim() || "Incident report";
+  }
+  window.addEventListener("beforeprint", preparePrint);
+  window.addEventListener("afterprint", function () { document.title = originalTitle; });
+  $("#exportBtn").addEventListener("click", function () { preparePrint(); try { window.print(); } catch (e) { /* print unavailable */ } });
+  $("#previewBtn").addEventListener("click", function () {
+    var box = $("#reportPreview");
+    if (!box.hidden) { box.hidden = true; this.textContent = "Preview report"; return; }
+    buildReport(studentData(), box);
+    box.hidden = false;
+    this.textContent = "Hide preview";
+    box.scrollIntoView({ block: "nearest" });
+  });
+
+  /* ------------------------------------------------------------------
+     Locks: each task opens when the previous one is complete
+  ------------------------------------------------------------------ */
+  var PADLOCK = '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>';
+  var ST_ICON = {
+    locked: '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/></svg>',
+    open: '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="5.5"/></svg>',
+    done: '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="5.5"/><path d="M5.5 8.2l1.8 1.8 3.2-3.6"/></svg>'
+  };
+  var ST_WORD = { locked: "Locked", open: "Open", done: "Complete" };
+  var LOCKS = {}, locksReady = false, locksAnimate = false;
+
+  function buildLock(id) {
+    var sec = $("#" + id), h = $("h2", sec);
+    var body = el("div", { class: "lockbody" });
+    var n = h.nextSibling;
+    while (n) { var nx = n.nextSibling; body.appendChild(n); n = nx; }
+    var note = el("div", { class: "lock-note", role: "status" });
+    note.innerHTML = '<div class="lock-ico">' + PADLOCK + '</div><div><span class="lock-tag">Locked</span><p></p></div>';
+    sec.appendChild(note);
+    sec.appendChild(body);
+    LOCKS[id] = { sec: sec, body: body, note: note };
+  }
+  function setLock(id, open, msg) {
+    var L = LOCKS[id], wasLocked = L.body.hidden;
+    L.body.hidden = !open;
+    L.note.hidden = open;
+    if (!open) L.note.querySelector("p").innerHTML = msg;
+    if (open && wasLocked) {
+      $all("textarea", L.body).forEach(autoGrow);
+      if (locksAnimate) {
+        L.sec.classList.remove("just-unlocked");
+        void L.sec.offsetWidth;
+        L.sec.classList.add("just-unlocked");
+      }
+    }
+  }
+  function reportReady() {
+    var f = state.fields;
+    return !!((f.title || "").trim() && f.sev && (f.exec || "").trim() &&
+      state.attack.some(function (r) { return r.id && Array.isArray(r.tac) && r.tac.length; }));
+  }
+  function setNav(key, stateName) {
+    var li = $('li[data-st="' + key + '"]');
+    if (!li) return;
+    li.setAttribute("data-state", stateName);
+    var st = $(".st", li);
+    st.innerHTML = ST_ICON[stateName] + '<span class="sr">' + ST_WORD[stateName] + "</span>";
+  }
+  function applyLocks() {
+    if (!locksReady) return;
+    var u2 = state.done1, u3 = state.done1 && state.done2, ready = u3 && reportReady();
+    setLock("task2", u2, "<strong>Task 2 is locked.</strong> Put the 20 alerts in the correct chronological order in Task 1 and select Check order to unlock it.");
+    setLock("report", u3, "<strong>Task 3 is locked.</strong> " + (state.done1
+      ? "Classify all 20 alerts correctly in Task 2 and select Check classification to unlock it."
+      : "Complete Task 1 and Task 2 first."));
+    setLock("model", ready, "<strong>The model answer is locked.</strong> " + (u3
+      ? "Write your own report first: fill in the incident title, severity and executive summary, and add at least one ATT&amp;CK row with a tactic."
+      : "Complete Tasks 1 to 3 first."));
+    setNav("task1", state.done1 ? "done" : "open");
+    setNav("task2", !u2 ? "locked" : state.done2 ? "done" : "open");
+    setNav("report", !u3 ? "locked" : ready ? "done" : "open");
+    setNav("model", ready ? "open" : "locked");
+    var n = (state.done1 ? 1 : 0) + (state.done2 ? 1 : 0) + (ready ? 1 : 0);
+    $("#progBar").style.width = (n / 3 * 100) + "%";
+    $("#progLabel").textContent = n + " of 3";
+    $("#progTrack").setAttribute("aria-valuenow", String(n));
+  }
+
+  /* ------------------------------------------------------------------
+     Colour theme toggle (dark by default)
+  ------------------------------------------------------------------ */
+  var THEME_KEY = "alderline-theme";
+  var rootEl = document.documentElement;
+  try {
+    var th = localStorage.getItem(THEME_KEY);
+    if (th === "light" || th === "dark") rootEl.setAttribute("data-theme", th);
+  } catch (e) { /* ignore */ }
+  var SUN = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6L13 13M13 3l-1.4 1.4M4.4 11.6L3 13"/></svg>';
+  var MOON = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M13 9.5A5.5 5.5 0 0 1 6.5 3 5.5 5.5 0 1 0 13 9.5z"/></svg>';
+  function paintThemeBtn() {
+    var light = rootEl.getAttribute("data-theme") === "light";
+    $("#themeBtn").innerHTML = (light ? MOON : SUN) + "<span>" + (light ? "Dark mode" : "Light mode") + "</span>";
+  }
+  $("#themeBtn").addEventListener("click", function () {
+    var next = rootEl.getAttribute("data-theme") === "light" ? "dark" : "light";
+    rootEl.setAttribute("data-theme", next);
+    try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* ignore */ }
+    paintThemeBtn();
+  });
+  paintThemeBtn();
+
+  /* ------------------------------------------------------------------
+     Start
+  ------------------------------------------------------------------ */
+  renderOrder(state.order);
+  buildLock("task2"); buildLock("report"); buildLock("model");
+  locksReady = true;
+  applyLocks();
+  locksAnimate = true;
+
+  // highlight the section being read in the contents list
+  if ("IntersectionObserver" in window) {
+    var navItems = {};
+    $all(".toc li").forEach(function (li) { var a = $("a", li); navItems[a.getAttribute("href").slice(1)] = li; });
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        $all(".toc li.cur").forEach(function (x) { x.classList.remove("cur"); });
+        var li = navItems[en.target.id];
+        if (li) li.classList.add("cur");
+      });
+    }, { rootMargin: "-20% 0px -70% 0px" });
+    Object.keys(navItems).forEach(function (id) { var s = document.getElementById(id); if (s) io.observe(s); });
+  }
+
+  $("#clearBtn").addEventListener("click", function () {
+    if (!armed(this, "Click again to clear everything")) return;
+    try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
+    window.location.reload();
+  });
+})();
+</script>
+
+</body>
+</html>
